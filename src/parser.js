@@ -42,14 +42,17 @@ export function parseNovel(rawText, options = {}) {
     if (!detectedAuthor) detectedAuthor = '저자 미상';
 
     // === 2. 패턴 정의 ===
-    // 부 패턴: "<1부 : ...>", "[제 1부]", "1부.", "Part 1" 등
+    // 부 패턴: 다양한 변형 포괄
     const partPatterns = [
-        /^<\s*(\d+)\s*부\s*[:：]?\s*([^>]*?)\s*>$/,        // <1부 : 캡틴 카셀>
-        /^\[\s*제?\s*(\d+)\s*부\s*\]?\s*[:：]?\s*(.*)$/,    // [제1부] 또는 [1부 :...]
-        /^제\s*(\d+)\s*부\s*[:：.]?\s*(.*)$/,                // 제1부. 또는 제 1 부 :
-        /^(\d+)\s*부\s*[:：.]\s*(.*)$/,                      // 1부 : ...
-        /^Part\s+(\d+|[IVXLCDM]+)\s*[:：.]?\s*(.*)$/i,       // Part 1 또는 Part I
-        /^Book\s+(\d+|[IVXLCDM]+)\s*[:：.]?\s*(.*)$/i,       // Book 1
+        /^<\s*(\d+)\s*부\s*[:：.\-—]?\s*([^>]*?)\s*>$/,       // <1부 : 캡틴 카셀>
+        /^\[\s*제?\s*(\d+)\s*부\s*\]\s*[:：.\-—]?\s*(.*)$/,   // [제1부] 또는 [1부] :
+        /^【\s*제?\s*(\d+)\s*부\s*】\s*[:：.\-—]?\s*(.*)$/,   // 【제1부】
+        /^제\s*(\d+)\s*부\s*[:：.\-—]?\s*(.*)$/,              // 제1부.
+        /^(\d+)\s*부\s*[:：.\-—]\s*(.*)$/,                    // 1부 : ...
+        /^Part\s+(\d+|[IVXLCDM]+)\s*[:：.\-—]?\s*(.*)$/i,     // Part 1 / Part I
+        /^Book\s+(\d+|[IVXLCDM]+)\s*[:：.\-—]?\s*(.*)$/i,     // Book 1
+        /^Volume\s+(\d+|[IVXLCDM]+)\s*[:：.\-—]?\s*(.*)$/i,   // Volume 1
+        /^Vol\.?\s*(\d+)\s*[:：.\-—]?\s*(.*)$/i,              // Vol. 1
     ];
 
     // 외전/번외 시작 패턴 (별도 부로 처리)
@@ -60,18 +63,30 @@ export function parseNovel(rawText, options = {}) {
         /^\[\s*외전\s*\]\s*[:：]?\s*(.*)$/,                   // [외전] 또는 [외전] : ...
     ];
 
-    // 챕터 패턴
+    // 챕터 패턴 — 다양한 텍본 변형 포괄
     const chapterPatterns = [
-        // 한국어
-        /^(프롤로그|에필로그|서문|서장|종장|머리말|맺음말)\s*[.:：]?\s*(.*)$/,
-        /^제\s*(\d+)\s*장\s*[:：.]?\s*(.*)$/,                // 제1장
-        /^제\s*(\d+)\s*화\s*[:：.]?\s*(.*)$/,                // 제1화
-        /^(\d+)\s*장\s*[:：.]\s*(.*)$/,                      // 1장. ...
-        /^(\d+)\s*화\s*[:：.]\s*(.*)$/,                      // 1화. ...
+        // 한국어 기본
+        /^(프롤로그|에필로그|서문|서장|종장|머리말|맺음말)\s*[.:：·]?\s*(.*)$/,
+        /^제\s*(\d+)\s*장\s*[:：.·]?\s*(.*)$/,                  // 제1장
+        /^제\s*(\d+)\s*화\s*[:：.·]?\s*(.*)$/,                  // 제1화
+        /^제\s*(\d+)\s*편\s*[:：.·]?\s*(.*)$/,                  // 제1편
+        /^제\s*(\d+)\s*회\s*[:：.·]?\s*(.*)$/,                  // 제1회
+        /^(\d+)\s*장\s*[:：.·]\s*(.*)$/,                        // 1장. ...
+        /^(\d+)\s*화\s*[:：.·]\s*(.*)$/,                        // 1화. ...
+        /^(\d+)\s*편\s*[:：.·]\s*(.*)$/,                        // 1편. ...
+        /^(\d+)\s*회\s*[:：.·]\s*(.*)$/,                        // 1회. ...
+        // 괄호 / 장식 변형
+        /^[【\[]\s*제?\s*(\d+)\s*[장화편회]\s*[】\]]\s*[:：.·]?\s*(.*)$/, // 【1장】 [제1화]
+        /^[◆◇■□●○★☆※♦]+\s*제?\s*(\d+)\s*[장화편회]?\s*[◆◇■□●○★☆※♦]*\s*[:：.·]?\s*(.*)$/, // ◆ 1화 ◆
+        /^[=─━═\-]{2,}\s*제?\s*(\d+)\s*[장화편회]?\s*[=─━═\-]{2,}\s*$/, // === 1 === / ═══ 1 ═══ / --- 제1장 ---
+        /^#+\s*Chapter\s+(\d+|[IVXLCDM]+)\s*#*\s*[:：.]?\s*(.*)$/i, // ## Chapter 1 ##
+        /^#+\s*제?\s*(\d+)\s*[장화편회]\s*#*\s*[:：.·]?\s*(.*)$/, // ## 1장 ##
         // 영어
-        /^Chapter\s+(\d+|[IVXLCDM]+)\s*[:：.]?\s*(.*)$/i,    // Chapter 1
-        /^Prologue\s*[:：.]?\s*(.*)$/i,
-        /^Epilogue\s*[:：.]?\s*(.*)$/i,
+        /^Chapter\s+(\d+|[IVXLCDM]+)\s*[:：.\-—]?\s*(.*)$/i,    // Chapter 1 / Chapter I
+        /^Ch\.?\s*(\d+)\s*[:：.\-—]?\s*(.*)$/i,                 // Ch. 1 / Ch 1
+        /^Prologue\s*[:：.\-—]?\s*(.*)$/i,
+        /^Epilogue\s*[:：.\-—]?\s*(.*)$/i,
+        /^Episode\s+(\d+)\s*[:：.\-—]?\s*(.*)$/i,               // Episode 1
     ];
 
     // 부 종료/연결 마커: "끝" 또는 "계속" 포함된 부 헤더는 무시
@@ -219,62 +234,16 @@ export function parseNovel(rawText, options = {}) {
         }
     }
 
-    // === 4. 챕터가 너무 적으면 강제 분할 ===
-    // 챕터를 하나도 못 찾았거나, 챕터 개수가 매우 적은데 한 챕터가 너무 길면
-    // 길이 기반으로 분할
+    // === 4. 챕터를 하나도 못 찾으면: 강제 분할 없이 1권 통째로 ===
+    // 사용자 선호: 챕터 인식 실패 시 분할 시도 안 함, 통으로 보여줌.
     let totalChapters = 0;
     parts.forEach(p => totalChapters += p.chapters.length);
 
-    if (totalChapters <= 1) {
-        // 빈 줄 N개 연속을 구분자로 시도
-        const newParts = [];
-        for (const part of parts) {
-            const newChapters = [];
-            for (const ch of part.chapters) {
-                if (ch.text.length < 50000) {
-                    newChapters.push(ch);
-                    continue;
-                }
-                // 빈 줄 5개 이상으로 split 시도
-                const chunks = ch.text.split(/\n\s*\n\s*\n\s*\n\s*\n+/);
-                if (chunks.length >= 3) {
-                    chunks.forEach((chunk, i) => {
-                        if (chunk.trim().length > 100) {
-                            newChapters.push({
-                                title: `섹션 ${i + 1}`,
-                                text: chunk.trim()
-                            });
-                        }
-                    });
-                } else {
-                    // 그래도 안 나뉘면 길이로 분할 (대략 30000자씩)
-                    const splitSize = 30000;
-                    const txt = ch.text;
-                    let idx = 0;
-                    let segIdx = 1;
-                    while (idx < txt.length) {
-                        // 단락 경계에서 자르기
-                        let end = Math.min(idx + splitSize, txt.length);
-                        if (end < txt.length) {
-                            const nextBreak = txt.indexOf('\n\n', end);
-                            if (nextBreak !== -1 && nextBreak - end < 5000) {
-                                end = nextBreak;
-                            }
-                        }
-                        newChapters.push({
-                            title: `섹션 ${segIdx}`,
-                            text: txt.slice(idx, end).trim()
-                        });
-                        idx = end;
-                        segIdx++;
-                    }
-                }
-            }
-            newParts.push({ title: part.title, chapters: newChapters });
-        }
+    if (totalChapters === 0) {
+        // 빈 책 — 빈 부 정리
         parts.length = 0;
-        parts.push(...newParts);
     }
+    // totalChapters >= 1 이면 그대로 둠 (분할 시도 안 함)
 
     // === 5. 통계 ===
     let totalChars = 0;
