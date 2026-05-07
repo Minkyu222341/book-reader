@@ -253,7 +253,7 @@ async function renderLibrary() {
                     <h1 class="lib-title">나의 서재</h1>
                     <p class="lib-subtitle">${books.length === 0 ? '텍본 파일을 업로드해 책장을 채워보세요' : `${books.length}권의 책`}</p>
                 </div>
-                <button class="lib-add-mini" id="lib-add-mini" title="텍본 추가">＋</button>
+                <button class="lib-add-mini" id="lib-add-mini" title="텍본 추가" aria-label="텍본 추가"></button>
                 <input type="file" id="file-input" accept=".txt,text/plain" style="display:none" multiple>
             </div>
 

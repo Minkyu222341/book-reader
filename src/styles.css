@@ -74,26 +74,61 @@ body {
 }
 .lib-add-mini {
     flex-shrink: 0;
-    width: 44px;
-    height: 44px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
-    color: var(--paper);
-    border: 1px solid rgba(212, 175, 95, 0.4);
+    background: rgba(176, 141, 58, 0.06);
+    border: 1px solid rgba(212, 175, 95, 0.35);
     cursor: pointer;
-    font-size: 22px;
-    font-family: inherit;
-    line-height: 1;
     padding: 0;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-    transition: all 0.2s ease;
+    position: relative;
+    box-shadow: inset 0 0 12px rgba(212, 175, 95, 0.04);
+    transition:
+        background 0.4s ease,
+        border-color 0.4s ease,
+        box-shadow 0.4s ease,
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* + 아이콘: 두께 일정한 막대 두 개로 그림 */
+.lib-add-mini::before,
+.lib-add-mini::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: rgba(212, 175, 95, 0.85);
+    border-radius: 1px;
+    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+                background 0.4s ease;
+}
+.lib-add-mini::before {
+    width: 14px;
+    height: 1.5px;
+    transform: translate(-50%, -50%) rotate(0deg);
+}
+.lib-add-mini::after {
+    width: 1.5px;
+    height: 14px;
+    transform: translate(-50%, -50%) rotate(0deg);
 }
 .lib-add-mini:hover {
+    background: rgba(176, 141, 58, 0.16);
     border-color: var(--gold);
-    transform: scale(1.05);
-    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    box-shadow:
+        0 0 0 4px rgba(212, 175, 95, 0.06),
+        0 4px 16px rgba(0, 0, 0, 0.35),
+        inset 0 0 14px rgba(212, 175, 95, 0.12);
+    transform: scale(1.06);
 }
-.lib-add-mini:active { transform: scale(0.95); }
+.lib-add-mini:hover::before,
+.lib-add-mini:hover::after {
+    background: var(--gold);
+    transform: translate(-50%, -50%) rotate(180deg);
+}
+.lib-add-mini:active {
+    transform: scale(0.94);
+    transition-duration: 0.1s;
+}
 .lib-title {
     font-family: 'Nanum Myeongjo', serif;
     font-size: 36px;
