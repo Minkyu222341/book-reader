@@ -887,13 +887,14 @@ function destroyPageFlip() {
         _pf = null;
     }
     _pfSig = null;
+    // PageFlip의 destroy()가 자기 컨테이너(=mount 안 wrap)를 제거함.
+    // 혹시 wrap이 남아있으면 명시 정리. mount 자체는 절대 건드리지 않음.
     const mount = document.getElementById('pageflip-mount');
     if (mount) {
-        // PageFlip 잔여물(클래스/canvas/inline style) 완전 정리
-        mount.innerHTML = '';
-        mount.className = '';
-        mount.removeAttribute('style');
-        // mount의 default 표시 상태(display)는 caller가 다시 설정한다 (renderCurrentSpread)
+        const wrap = mount.querySelector('.pf-wrap');
+        if (wrap) wrap.remove();
+        // 혹시 mount 자체에 stf 클래스 잔여 (이전 버그 호환) 정리
+        mount.classList.remove('stf__parent');
     }
 }
 
@@ -931,8 +932,15 @@ function setupPageFlip() {
     }
 
     destroyPageFlip();
-    // destroyPageFlip이 mount의 모든 inline style 제거 → 표시 상태 다시 보장
+    // destroyPageFlip이 mount 안의 wrap을 제거함. mount 자체는 영구 보존.
     mount.style.display = '';
+
+    // PageFlip이 destroy 시 자기 컨테이너를 DOM에서 제거하므로
+    // mount 안에 wrap div를 만들고 wrap에 PageFlip 적용 → mount은 안전
+    const wrap = document.createElement('div');
+    wrap.className = 'pf-wrap';
+    wrap.style.cssText = 'width:100%;height:100%;position:relative;';
+    mount.appendChild(wrap);
 
     const ch = state.flatChapters[state.currentChapter];
     const headerText = `${esc(ch.partTitle)} · ${esc(ch.title)}`;
@@ -945,20 +953,20 @@ function setupPageFlip() {
             <div class="page-content" style="font-size: ${state.fontSize}px">${p.html}</div>
             <div class="page-footer">${idx + 1} / ${state.pages.length}</div>
         `;
-        mount.appendChild(div);
+        wrap.appendChild(div);
     });
 
-    // Layout 강제 (페이지 div 추가 후 mount 사이즈 정확히 측정)
-    void mount.offsetWidth;
+    // Layout 강제 (페이지 div 추가 후 wrap 사이즈 정확히 측정)
+    void wrap.offsetWidth;
 
     // RAF로 layout 안정 후 PageFlip 생성 (특히 mode 전환 직후 사이즈 0 방지)
     requestAnimationFrame(() => {
         const isMobile = window.innerWidth <= 900;
         const rect = book.getBoundingClientRect();
-        const mountRect = mount.getBoundingClientRect();
+        const wrapRect = wrap.getBoundingClientRect();
 
-        // mount 사이즈가 여전히 0이면 한 번 더 RAF 대기
-        if (mountRect.width < 50 || mountRect.height < 50) {
+        // wrap 사이즈가 여전히 0이면 한 번 더 RAF 대기
+        if (wrapRect.width < 50 || wrapRect.height < 50) {
             requestAnimationFrame(() => setupPageFlip());
             return;
         }
@@ -968,7 +976,7 @@ function setupPageFlip() {
             const pfHeight = isMobile ? 800 : Math.max(400, rect.height);
             const startIdx = Math.max(0, Math.min(state.currentPagePair, state.pages.length - 1));
 
-            _pf = new PageFlip(mount, {
+            _pf = new PageFlip(wrap, {
                 width: pfWidth,
                 height: pfHeight,
                 size: 'stretch',
@@ -982,14 +990,12 @@ function setupPageFlip() {
                 flippingTime: 700,
                 drawShadow: true,
                 maxShadowOpacity: 0.5,
-                // startPage 옵션이 라이브러리 init 타이밍에 따라 누락되는 케이스 있음
-                // → 항상 0으로 시작 후 RAF 후 명시적 turnToPage 호출 (안정적)
                 startPage: 0,
                 useMouseEvents: false,
                 clickEventForward: false,
             });
 
-            _pf.loadFromHTML(mount.querySelectorAll('.pf-page'));
+            _pf.loadFromHTML(wrap.querySelectorAll('.pf-page'));
             _pfSig = sig;
             state.currentPagePair = 0;
 
