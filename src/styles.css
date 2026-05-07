@@ -1304,17 +1304,66 @@ body {
     .tb-btn { padding: 6px 8px; font-size: 13px; min-width: 28px; }
     #btn-back { font-size: 13px; padding: 6px 6px; }
 
-    #library-view { padding: 24px 16px 40px; }
-    .lib-title { font-size: 28px; letter-spacing: 0.15em; }
+    #library-view { padding: 20px 14px 40px; }
+    .lib-header { margin-bottom: 22px; padding-bottom: 18px; }
+    .lib-title { font-size: 26px; letter-spacing: 0.18em; }
+    .lib-subtitle { font-size: 13px; }
+    .lib-actions { margin-bottom: 24px; }
+
+    /* 모바일: 한 줄에 3권 + 표지 안 텍스트 숨김 (앱처럼 책표지만) */
     .book-grid {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 24px 14px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px 12px;
     }
-    .book-cover-title { font-size: 14px; }
-    .book-cover-author { font-size: 10px; }
-    .book-info-title { font-size: 13px; }
+    .book-cover-inner {
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+    .book-cover-title,
+    .book-cover-author,
+    .book-cover-divider,
+    .book-cover-deco-top,
+    .book-cover-deco-bottom { display: none; }
+
+    /* 표지 자체에 미니 장식 */
+    .book-cover {
+        position: relative;
+    }
+    .book-cover::after {
+        content: '';
+        position: absolute;
+        inset: 6px;
+        border: 1px solid rgba(212, 175, 95, 0.28);
+        border-radius: 1px;
+        pointer-events: none;
+    }
+
+    /* 카드 아래는 제목만, 한 줄 처리 */
+    .book-info { margin-top: 8px; padding: 0 2px; }
+    .book-info-title {
+        font-size: 11.5px;
+        line-height: 1.35;
+        font-weight: 600;
+        -webkit-line-clamp: 2;
+        word-break: keep-all;
+    }
+    .book-info-meta { display: none; }
+
+    /* 삭제 버튼은 항상 노출 (작게) */
+    .book-delete {
+        opacity: 0.85;
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
+        top: -6px;
+        right: -6px;
+    }
 }
 
+/* 더 작은 화면 (소형 폰): 그래도 3권 유지 */
 @media (max-width: 600px) {
     .page.right { padding: 24px 18px; }
     .chapter-title { font-size: 1.3em; margin: 0.4em 0 1.2em 0; }
@@ -1322,6 +1371,13 @@ body {
     .lib-add-btn { padding: 12px 24px; font-size: 14px; }
     #side-panel { width: 320px; }
     #settings-panel { width: 300px; }
+    .book-grid { gap: 16px 10px; }
+}
+
+/* 매우 좁은 화면 (~360px): 책 더 작게 */
+@media (max-width: 380px) {
+    .book-grid { gap: 14px 8px; }
+    .book-info-title { font-size: 11px; }
 }
 
 /* iOS safe area 대응 */
@@ -1335,4 +1391,174 @@ body {
         padding-right: max(32px, env(safe-area-inset-right));
         padding-bottom: max(60px, env(safe-area-inset-bottom));
     }
+}
+
+/* ==============================================
+   패널 백드롭 (사이드/설정 패널 외부 어둡게)
+   ============================================== */
+#panel-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    z-index: 15;
+    pointer-events: none;
+    transition: background 0.25s ease;
+}
+#panel-backdrop.show {
+    background: rgba(0, 0, 0, 0.45);
+    pointer-events: auto;
+}
+
+/* ==============================================
+   설정 - 새 UI 요소들
+   ============================================== */
+.settings-desc {
+    font-size: 12px;
+    color: var(--ink-fade);
+    line-height: 1.6;
+    margin-bottom: 12px;
+    word-break: keep-all;
+}
+
+/* 데스크탑/모바일에 따라 보이는 섹션 분기 */
+.mobile-only { display: none; }
+.desktop-only { display: block; }
+@media (max-width: 900px) {
+    .mobile-only { display: block; }
+    .desktop-only { display: none; }
+}
+
+/* 터치 영역 미리보기 */
+.touch-zones-preview {
+    display: grid;
+    grid-template-columns: 30% auto 30%;
+    height: 80px;
+    border: 1px solid rgba(176, 141, 58, 0.3);
+    border-radius: 3px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+    background: rgba(244, 236, 216, 0.04);
+}
+.tzp-prev, .tzp-center, .tzp-next {
+    height: 100%;
+    border-right: 1px dashed rgba(176, 141, 58, 0.25);
+}
+.tzp-next { border-right: none; }
+.tzp-prev { background: linear-gradient(90deg, rgba(139, 58, 47, 0.18), transparent); }
+.tzp-next { background: linear-gradient(270deg, rgba(139, 58, 47, 0.18), transparent); }
+.tzp-center { background: rgba(176, 141, 58, 0.08); }
+.tzp-label {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--paper);
+    letter-spacing: 0.1em;
+    pointer-events: none;
+    font-family: 'Nanum Myeongjo', serif;
+}
+.tzp-label-prev { left: 8px; }
+.tzp-label-center { left: 50%; transform: translate(-50%, -50%); color: var(--gold); }
+.tzp-label-next { right: 8px; }
+
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--paper);
+}
+.slider-row label { flex: 0 0 90px; word-break: keep-all; }
+.slider-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: rgba(176, 141, 58, 0.2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--gold);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.slider-row input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--gold);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+.slider-val {
+    flex: 0 0 40px;
+    text-align: right;
+    color: var(--gold);
+    font-family: 'Cormorant Garamond', serif;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 세그먼트 버튼 (중앙 탭 동작 선택) */
+.seg-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+.seg-btn {
+    flex: 1;
+    padding: 9px 4px;
+    background: rgba(244, 236, 216, 0.05);
+    border: 1px solid rgba(176, 141, 58, 0.25);
+    color: var(--paper);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    border-radius: 2px;
+    transition: all 0.12s ease;
+    word-break: keep-all;
+}
+.seg-btn:hover {
+    background: rgba(176, 141, 58, 0.12);
+}
+.seg-btn.active {
+    background: rgba(176, 141, 58, 0.22);
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+/* ==============================================
+   터치 가이드 (책 영역에 영역 표시 — 현재는 비활성)
+   ============================================== */
+.touch-guide {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    display: none;
+}
+
+/* ==============================================
+   툴바 숨김 (모바일 메뉴 토글)
+   ============================================== */
+#toolbar {
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+#toolbar.hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 모바일에선 데스크탑 nav-zone 숨김 (탭 영역 시스템이 대체) */
+@media (max-width: 900px) {
+    .nav-zone { display: none; }
 }

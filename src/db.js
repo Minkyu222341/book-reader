@@ -126,3 +126,30 @@ export async function deleteBookmark(id) {
 export function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }
+
+// === 앱 전역 설정 (localStorage) ===
+const APP_SETTINGS_KEY = 'bookreader.appSettings';
+const DEFAULT_SETTINGS = {
+    // 모바일 터치 영역 비율 (전체 폭 기준 0~1)
+    touchPrev: 0.30,    // 좌측 30% → 이전 페이지
+    touchNext: 0.30,    // 우측 30% → 다음 페이지
+    // 중앙 영역(나머지)은 탭하면 메뉴 토글
+    tapCenterAction: 'menu', // 'menu' | 'next' | 'none'
+};
+
+export function getAppSettings() {
+    try {
+        const raw = localStorage.getItem(APP_SETTINGS_KEY);
+        if (!raw) return { ...DEFAULT_SETTINGS };
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_SETTINGS, ...parsed };
+    } catch (e) {
+        return { ...DEFAULT_SETTINGS };
+    }
+}
+
+export function saveAppSettings(settings) {
+    try {
+        localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) { console.warn('설정 저장 실패', e); }
+}

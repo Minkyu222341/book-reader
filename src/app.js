@@ -6,7 +6,8 @@ import {
     saveBook, getBook, listBooks, deleteBook,
     saveProgress, getProgress,
     addBookmark, listBookmarks, deleteBookmark,
-    generateId
+    generateId,
+    getAppSettings, saveAppSettings
 } from './db.js';
 
 // =====================================================
@@ -22,7 +23,8 @@ const state = {
     pages: [],
     fontSize: 17,
     bookmarks: [],
-    sidePanelTab: 'toc'
+    sidePanelTab: 'toc',
+    appSettings: getAppSettings()
 };
 
 // =====================================================
@@ -575,8 +577,18 @@ function renderReader() {
                     <div class="nav-zone right" id="nav-next" title="다음 (→)">
                         <span class="nav-arrow">›</span>
                     </div>
+
+                    <!-- 모바일 터치 가이드 (설정에서 영역 조절 시에만 표시) -->
+                    <div id="touch-guide" class="touch-guide">
+                        <div class="tg-zone tg-prev" id="tg-prev"><span>이전</span></div>
+                        <div class="tg-zone tg-center" id="tg-center"><span>메뉴</span></div>
+                        <div class="tg-zone tg-next" id="tg-next"><span>다음</span></div>
+                    </div>
                 </div>
             </div>
+
+            <!-- 패널 백드롭 (외부 클릭 시 닫기 + 시각 효과) -->
+            <div id="panel-backdrop"></div>
 
             <!-- 사이드 패널 -->
             <div id="side-panel">
@@ -597,7 +609,37 @@ function renderReader() {
                         <button class="fs-btn" id="fs-up">A+</button>
                     </div>
                 </div>
-                <div class="settings-row">
+
+                <div class="settings-row mobile-only">
+                    <div class="settings-h">탭 영역</div>
+                    <div class="settings-desc">화면 좌/우 끝을 탭하면 페이지 이동, 가운데를 탭하면 메뉴가 열립니다.</div>
+                    <div class="touch-zones-preview" id="touch-zones-preview">
+                        <div class="tzp-prev" id="tzp-prev"></div>
+                        <div class="tzp-center"></div>
+                        <div class="tzp-next" id="tzp-next"></div>
+                        <div class="tzp-label tzp-label-prev">이전</div>
+                        <div class="tzp-label tzp-label-center">메뉴</div>
+                        <div class="tzp-label tzp-label-next">다음</div>
+                    </div>
+                    <div class="slider-row">
+                        <label>좌측(이전) 영역</label>
+                        <input type="range" id="touch-prev-slider" min="10" max="45" step="5" value="${Math.round(state.appSettings.touchPrev * 100)}">
+                        <span class="slider-val" id="touch-prev-val">${Math.round(state.appSettings.touchPrev * 100)}%</span>
+                    </div>
+                    <div class="slider-row">
+                        <label>우측(다음) 영역</label>
+                        <input type="range" id="touch-next-slider" min="10" max="45" step="5" value="${Math.round(state.appSettings.touchNext * 100)}">
+                        <span class="slider-val" id="touch-next-val">${Math.round(state.appSettings.touchNext * 100)}%</span>
+                    </div>
+                    <div class="settings-h" style="margin-top:18px;">중앙 탭 동작</div>
+                    <div class="seg-row">
+                        <button class="seg-btn ${state.appSettings.tapCenterAction === 'menu' ? 'active' : ''}" data-center="menu">메뉴 토글</button>
+                        <button class="seg-btn ${state.appSettings.tapCenterAction === 'next' ? 'active' : ''}" data-center="next">다음 페이지</button>
+                        <button class="seg-btn ${state.appSettings.tapCenterAction === 'none' ? 'active' : ''}" data-center="none">없음</button>
+                    </div>
+                </div>
+
+                <div class="settings-row desktop-only">
                     <div class="settings-h">단축키</div>
                     <div class="shortcut-row"><span>다음 페이지</span><kbd>→ / Space</kbd></div>
                     <div class="shortcut-row"><span>이전 페이지</span><kbd>←</kbd></div>
@@ -856,6 +898,12 @@ function goPrevChapter() {
 // =====================================================
 function openSidePanel(tab = 'toc') {
     state.sidePanelTab = tab;
+    // 설정 패널이 열려있으면 먼저 닫기
+    const set = document.getElementById('settings-panel');
+    if (set && set.classList.contains('open')) {
+        set.classList.remove('open');
+        document.getElementById('btn-settings')?.classList.remove('active');
+    }
     document.querySelectorAll('.sp-tab').forEach(t => {
         t.classList.toggle('active', t.dataset.tab === tab);
     });
@@ -863,14 +911,26 @@ function openSidePanel(tab = 'toc') {
     else renderBookmarks();
     document.getElementById('side-panel').classList.add('open');
     document.getElementById('btn-toc').classList.add('active');
+    document.getElementById('panel-backdrop')?.classList.add('show');
 }
 function closeSidePanel() {
     document.getElementById('side-panel').classList.remove('open');
     document.getElementById('btn-toc').classList.remove('active');
+    updatePanelBackdrop();
 }
 function toggleSidePanel() {
     if (document.getElementById('side-panel').classList.contains('open')) closeSidePanel();
     else openSidePanel(state.sidePanelTab);
+}
+
+// 둘 다 닫혔으면 백드롭도 끔
+function updatePanelBackdrop() {
+    const sp = document.getElementById('side-panel');
+    const set = document.getElementById('settings-panel');
+    const bd = document.getElementById('panel-backdrop');
+    if (!bd) return;
+    const anyOpen = (sp && sp.classList.contains('open')) || (set && set.classList.contains('open'));
+    bd.classList.toggle('show', anyOpen);
 }
 
 function renderToc() {
@@ -1045,8 +1105,12 @@ function updateBookmarkRibbon() {
 function toggleSettingsPanel() {
     const panel = document.getElementById('settings-panel');
     const btn = document.getElementById('btn-settings');
+    // 사이드 패널이 열려있으면 먼저 닫기 (둘 다 동시에 안 띄우게)
+    const sp = document.getElementById('side-panel');
+    if (sp && sp.classList.contains('open')) closeSidePanel();
     panel.classList.toggle('open');
     btn.classList.toggle('active', panel.classList.contains('open'));
+    updatePanelBackdrop();
 }
 
 function setFontSize(size) {
@@ -1082,17 +1146,29 @@ function bindReaderEvents() {
         renderLibrary();
     });
 
+    // 데스크탑: nav-zone 클릭 (모바일에선 CSS로 숨김)
     document.getElementById('nav-prev').addEventListener('click', goPrev);
     document.getElementById('nav-next').addEventListener('click', goNext);
 
     document.getElementById('cover-spread').addEventListener('click', (e) => {
         if (e.target.closest('.nav-zone')) return;
+        // 패널 열려있으면 패널 닫기
+        if (closeOverlaysIfOpen()) return;
         goNext();
     });
 
-    document.getElementById('btn-toc').addEventListener('click', toggleSidePanel);
-    document.getElementById('btn-bookmark-add').addEventListener('click', openBookmarkModal);
-    document.getElementById('btn-settings').addEventListener('click', toggleSettingsPanel);
+    document.getElementById('btn-toc').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSidePanel();
+    });
+    document.getElementById('btn-bookmark-add').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openBookmarkModal();
+    });
+    document.getElementById('btn-settings').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSettingsPanel();
+    });
 
     document.querySelectorAll('.sp-tab').forEach(t => {
         t.addEventListener('click', () => openSidePanel(t.dataset.tab));
@@ -1100,6 +1176,9 @@ function bindReaderEvents() {
 
     document.getElementById('fs-up').addEventListener('click', () => setFontSize(state.fontSize + 1));
     document.getElementById('fs-down').addEventListener('click', () => setFontSize(state.fontSize - 1));
+
+    // 터치 영역 슬라이더
+    bindTouchZoneSettings();
 
     document.getElementById('modal-cancel').addEventListener('click', closeBookmarkModal);
     document.getElementById('modal-save').addEventListener('click', saveBookmarkAction);
@@ -1110,7 +1189,8 @@ function bindReaderEvents() {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveBookmarkAction();
     });
 
-    document.getElementById('bookmark-ribbon').addEventListener('click', () => {
+    document.getElementById('bookmark-ribbon').addEventListener('click', (e) => {
+        e.stopPropagation();
         const bm = state.bookmarks.find(b =>
             b.chapterIdx === state.currentChapter && b.pagePair === state.currentPagePair
         );
@@ -1119,11 +1199,20 @@ function bindReaderEvents() {
         }
     });
 
+    // 패널 백드롭 클릭 → 열린 패널 닫기 (페이지 이동 X)
+    const backdrop = document.getElementById('panel-backdrop');
+    if (backdrop) {
+        backdrop.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeOverlaysIfOpen();
+        });
+    }
+
     // 키보드
     document.addEventListener('keydown', readerKeyHandler);
 
-    // 터치 스와이프 (모바일)
-    setupTouchSwipe();
+    // 통합 입력 (탭 + 스와이프)
+    setupBookInput();
 
     // 리사이즈
     let resizeTimer = null;
@@ -1134,6 +1223,60 @@ function bindReaderEvents() {
             rebuildPages();
             renderCurrentSpread('forward');
         }, 200);
+    });
+}
+
+// 사이드 패널 / 설정 패널이 열려있으면 닫고 true 반환 (= 다른 동작 막기)
+function closeOverlaysIfOpen() {
+    const sp = document.getElementById('side-panel');
+    const set = document.getElementById('settings-panel');
+    let closed = false;
+    if (sp && sp.classList.contains('open')) {
+        sp.classList.remove('open');
+        document.getElementById('btn-toc')?.classList.remove('active');
+        closed = true;
+    }
+    if (set && set.classList.contains('open')) {
+        set.classList.remove('open');
+        document.getElementById('btn-settings')?.classList.remove('active');
+        closed = true;
+    }
+    if (closed) updatePanelBackdrop();
+    return closed;
+}
+
+function bindTouchZoneSettings() {
+    const prevSlider = document.getElementById('touch-prev-slider');
+    const nextSlider = document.getElementById('touch-next-slider');
+    if (!prevSlider) return;
+
+    const sync = () => {
+        document.getElementById('touch-prev-val').textContent = prevSlider.value + '%';
+        document.getElementById('touch-next-val').textContent = nextSlider.value + '%';
+        // 미리보기 업데이트
+        const tzp = document.getElementById('touch-zones-preview');
+        if (tzp) {
+            tzp.style.gridTemplateColumns = `${prevSlider.value}% auto ${nextSlider.value}%`;
+        }
+    };
+    sync();
+
+    const onChange = () => {
+        state.appSettings.touchPrev = parseInt(prevSlider.value) / 100;
+        state.appSettings.touchNext = parseInt(nextSlider.value) / 100;
+        saveAppSettings(state.appSettings);
+        sync();
+    };
+    prevSlider.addEventListener('input', onChange);
+    nextSlider.addEventListener('input', onChange);
+
+    document.querySelectorAll('.seg-btn[data-center]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.seg-btn[data-center]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.appSettings.tapCenterAction = btn.dataset.center;
+            saveAppSettings(state.appSettings);
+        });
     });
 }
 
@@ -1171,32 +1314,118 @@ function readerKeyHandler(e) {
     }
 }
 
-function setupTouchSwipe() {
+// 터치 + 클릭 통합 입력 처리 (모바일/데스크탑 공통)
+function setupBookInput() {
     const stage = document.getElementById('book-stage');
     if (!stage) return;
 
     let touchStartX = 0;
     let touchStartY = 0;
     let touchStartT = 0;
+    let touchMoved = false;
+    let lastTouchEnd = 0;
 
     stage.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return;
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         touchStartT = Date.now();
+        touchMoved = false;
+    }, { passive: true });
+
+    stage.addEventListener('touchmove', (e) => {
+        if (e.touches.length !== 1) return;
+        const dx = Math.abs(e.touches[0].clientX - touchStartX);
+        const dy = Math.abs(e.touches[0].clientY - touchStartY);
+        if (dx > 10 || dy > 10) touchMoved = true;
     }, { passive: true });
 
     stage.addEventListener('touchend', (e) => {
         if (e.changedTouches.length !== 1) return;
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        const dy = e.changedTouches[0].clientY - touchStartY;
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const dx = endX - touchStartX;
+        const dy = endY - touchStartY;
         const dt = Date.now() - touchStartT;
-        // 50px 이상 가로 스와이프, 세로보다 가로가 더 클 때, 800ms 이내
-        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 800) {
-            if (dx < 0) goNext();   // 왼쪽으로 스와이프 → 다음
-            else goPrev();
+
+        // 1. 사이드 패널/설정 열려있으면 닫기만 (어디 탭이든)
+        if (closeOverlaysIfOpen()) {
+            lastTouchEnd = Date.now();
+            return;
         }
+
+        // 2. 스와이프 (50px 이상, 가로>세로*1.5, 800ms 이내)
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 800) {
+            if (dx < 0) goNext();
+            else goPrev();
+            lastTouchEnd = Date.now();
+            return;
+        }
+
+        // 3. 탭 (이동 거의 없고, 짧음)
+        if (!touchMoved && dt < 400) {
+            handleBookTap(endX, e.changedTouches[0].target);
+        }
+        lastTouchEnd = Date.now();
     }, { passive: true });
+
+    // 클릭 이벤트 (마우스용, 모바일에선 touchend 이미 처리했으니 무시)
+    // 모바일에선 touch → 자동 click이 따라오는데 중복 처리되니 무시
+    stage.addEventListener('click', (e) => {
+        // touch 이벤트 직후 발생한 click은 무시 (중복 방지)
+        if (Date.now() - lastTouchEnd < 500) return;
+        // 데스크탑 nav-zone이 처리하는 좌/우 영역은 그쪽으로
+        if (e.target.closest('.nav-zone')) return;
+        // 패널 열려있으면 닫기
+        if (closeOverlaysIfOpen()) {
+            e.stopPropagation();
+            return;
+        }
+        // 모바일 영역 시스템에 의한 처리
+        const isMobile = window.innerWidth <= 900;
+        if (isMobile) {
+            handleBookTap(e.clientX, e.target);
+        }
+        // 데스크탑 본문 중앙 클릭 → 메뉴 토글이나 무시 (현재는 무시)
+    });
+}
+
+// 책 영역 탭 처리 — 좌/중/우 결정
+function handleBookTap(clientX, target) {
+    // 툴바 버튼 클릭 등은 stopPropagation으로 막혔어야 함, 안전 차원에서 한 번 더
+    if (target && target.closest('#toolbar')) return;
+    if (target && target.closest('.bookmark-ribbon')) return;
+    if (target && target.closest('#side-panel')) return;
+    if (target && target.closest('#settings-panel')) return;
+    if (target && target.closest('.modal-backdrop')) return;
+
+    const bookEl = document.getElementById('book');
+    if (!bookEl) return;
+    const rect = bookEl.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const ratio = x / rect.width;
+
+    const prevR = state.appSettings.touchPrev;
+    const nextR = 1 - state.appSettings.touchNext;
+
+    if (ratio < prevR) {
+        goPrev();
+    } else if (ratio > nextR) {
+        goNext();
+    } else {
+        // 중앙
+        const action = state.appSettings.tapCenterAction;
+        if (action === 'next') goNext();
+        else if (action === 'menu') toggleMobileMenu();
+        // 'none' → 아무것도 안 함
+    }
+}
+
+// 모바일 메뉴 토글: 툴바를 토글
+function toggleMobileMenu() {
+    const tb = document.getElementById('toolbar');
+    if (!tb) return;
+    tb.classList.toggle('hidden');
 }
 
 // =====================================================
