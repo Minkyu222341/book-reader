@@ -1,5 +1,6 @@
-// 간단한 캐시 우선 서비스 워커
-const CACHE = 'book-reader-v1';
+// 캐시 이름 — 빌드 시 build.py가 __BUILD_VERSION__ 부분을 timestamp로 치환합니다
+const CACHE = 'book-reader-v1778125624';
+
 const ASSETS = [
     './',
     './index.html',
@@ -14,10 +15,9 @@ const ASSETS = [
 
 self.addEventListener('install', (e) => {
     e.waitUntil(
-        caches.open(CACHE).then(cache => {
-            // 실패해도 install은 성공시키기 (외부 폰트가 차단된 상황 등)
-            return Promise.allSettled(ASSETS.map(url => cache.add(url).catch(() => {})));
-        }).then(() => self.skipWaiting())
+        caches.open(CACHE).then(cache =>
+            Promise.allSettled(ASSETS.map(url => cache.add(url).catch(() => {})))
+        ).then(() => self.skipWaiting())
     );
 });
 
@@ -29,22 +29,40 @@ self.addEventListener('activate', (e) => {
     );
 });
 
+// Network-first (자기 도메인) / Cache-first (외부 폰트)
 self.addEventListener('fetch', (e) => {
-    const url = new URL(e.request.url);
-    // 같은 origin이거나 폰트만 캐싱 처리
     if (e.request.method !== 'GET') return;
+    const url = new URL(e.request.url);
+    const isOwnOrigin = url.origin === location.origin;
+    const isFont = url.host.includes('fonts.g');
 
-    e.respondWith(
-        caches.match(e.request).then(cached => {
-            if (cached) return cached;
-            return fetch(e.request).then(resp => {
-                // 동적으로 캐싱 (성공한 것만)
-                if (resp.ok && (url.origin === location.origin || url.host.includes('fonts.g'))) {
+    if (isOwnOrigin) {
+        e.respondWith(
+            fetch(e.request).then(resp => {
+                if (resp.ok) {
                     const copy = resp.clone();
                     caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
                 }
                 return resp;
-            }).catch(() => cached || Response.error());
-        })
-    );
+            }).catch(() =>
+                caches.match(e.request).then(c => c || Response.error())
+            )
+        );
+    } else if (isFont) {
+        e.respondWith(
+            caches.match(e.request).then(cached =>
+                cached || fetch(e.request).then(resp => {
+                    if (resp.ok) {
+                        const copy = resp.clone();
+                        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+                    }
+                    return resp;
+                })
+            )
+        );
+    }
+});
+
+self.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
