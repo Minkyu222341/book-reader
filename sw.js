@@ -1,5 +1,5 @@
 // 캐시 이름 — 빌드 시 build.py가 __BUILD_VERSION__ 부분을 timestamp로 치환합니다
-const CACHE = 'book-reader-v1778139443';
+const CACHE = 'book-reader-v1778142138';
 
 const ASSETS = [
     './',

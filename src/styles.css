@@ -1623,8 +1623,49 @@ body {
     .page-content { line-height: 1.85; }
     .lib-add-btn { padding: 12px 24px; font-size: 14px; }
     #side-panel { width: 320px; }
-    #settings-panel { width: 300px; }
+    #settings-panel { width: 300px; padding: 22px 18px; }
     .book-grid { gap: 16px 10px; }
+
+    /* 설정 패널 내부 콘텐츠 컴팩트화 */
+    .settings-row { margin-bottom: 20px; }
+    .settings-h { font-size: 13px; margin-bottom: 10px; padding-bottom: 6px; }
+    .settings-desc { font-size: 11px; line-height: 1.5; margin-bottom: 10px; }
+
+    /* 슬라이더: 라벨 위, 슬라이더+값 아래 — 그리드로 두 줄 레이아웃
+       (외부 .slider-row { display: flex }보다 specificity 높여야 우선됨) */
+    #settings-panel .slider-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        column-gap: 10px;
+        row-gap: 4px;
+        margin-bottom: 14px;
+        align-items: center;
+    }
+    #settings-panel .slider-row label {
+        grid-column: 1 / -1;
+        flex: none;
+        font-size: 11px;
+        opacity: 0.75;
+    }
+    #settings-panel .slider-row input[type="range"] {
+        grid-column: 1;
+        flex: none;
+        width: 100%;
+        min-width: 0;
+    }
+    #settings-panel .slider-val {
+        grid-column: 2;
+        flex: none;
+        font-size: 11px;
+        min-width: 36px;
+    }
+
+    /* 탭 영역 미리보기 사이즈 축소 */
+    .touch-zones-preview { height: 80px; margin-bottom: 12px; }
+    .tzp-label { font-size: 10px; }
+    .seg-row { gap: 4px; }
+    .seg-btn { padding: 6px 10px; font-size: 12px; }
 }
 
 /* 매우 좁은 화면 (~360px): 책 더 작게 */
