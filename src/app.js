@@ -850,7 +850,11 @@ function renderCurrentSpread(direction = 'forward') {
         // 본문 챕터: PageFlip 활성
         document.getElementById('page-left').style.display = 'none';
         document.getElementById('page-right').style.display = 'none';
-        if (mount) mount.style.display = '';
+        if (mount) {
+            mount.style.display = '';
+            // display 변경 후 layout 강제 → PageFlip이 정확한 사이즈 측정
+            void mount.offsetWidth;
+        }
         setupPageFlip();
     } else {
         // 부 표지 등: 기존 .page 모드
@@ -931,24 +935,22 @@ function setupPageFlip() {
     const isMobile = window.innerWidth <= 900;
     const rect = book.getBoundingClientRect();
 
-    // 모바일: 마운트 자체를 portrait 비율로 강제 (PageFlip이 컨테이너 비율로 portrait 판정)
-    if (isMobile) {
-        const targetW = Math.min(rect.width, 500);
-        mount.style.width = targetW + 'px';
-        mount.style.height = rect.height + 'px';
-        mount.style.left = '50%';
-        mount.style.transform = 'translateX(-50%)';
-        mount.style.right = 'auto';
-    } else {
-        mount.style.width = '';
-        mount.style.height = '';
-        mount.style.left = '';
-        mount.style.transform = '';
-        mount.style.right = '';
-    }
+    // 마운트 reset (이전 PageFlip이 남긴 클래스/스타일 정리)
+    mount.style.width = '';
+    mount.style.height = '';
+    mount.style.left = '';
+    mount.style.transform = '';
+    mount.style.right = '';
+    // PageFlip이 추가하는 클래스 정리 (재초기화 시 충돌 방지)
+    mount.classList.remove('stf__parent');
+    mount.querySelectorAll('canvas').forEach(c => c.remove());
+
+    // Layout 강제 (PageFlip이 정확한 사이즈 측정)
+    void mount.offsetWidth;
 
     try {
         // 모바일은 portrait (1:2 비율), 데스크탑은 양면 spread
+        // PageFlip은 컨테이너 비율로 portrait/landscape 자체 판정 (폰: height >> width → portrait 자동)
         const pfWidth = isMobile ? 400 : Math.max(280, Math.floor(rect.width / 2));
         const pfHeight = isMobile ? 800 : Math.max(400, rect.height);
 
@@ -986,6 +988,13 @@ function setupPageFlip() {
             updateBookmarkRibbon();
             updateTocHighlight();
         });
+
+        // 사이즈 재측정 (간헐적 빈 화면 방지) — 라이브러리에 update 메서드 있으면 호출
+        setTimeout(() => {
+            try {
+                if (_pf && typeof _pf.update === 'function') _pf.update();
+            } catch (e) { /* noop */ }
+        }, 80);
     } catch (err) {
         console.error('PageFlip 초기화 실패:', err);
     }
