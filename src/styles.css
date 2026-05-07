@@ -900,8 +900,8 @@ body {
 }
 .nav-zone:hover .nav-arrow { opacity: 0.8; }
 
-.page-flip-enter { animation: pageFlipIn 0.35s ease-out; }
-.page-flip-back { animation: pageFlipBack 0.35s ease-out; }
+.page-flip-enter { animation: pageFlipIn 0.25s ease-out; }
+.page-flip-back { animation: pageFlipBack 0.25s ease-out; }
 @keyframes pageFlipIn {
     from { opacity: 0; transform: translateX(8px); }
     to { opacity: 1; transform: translateX(0); }
@@ -910,6 +910,60 @@ body {
     from { opacity: 0; transform: translateX(-8px); }
     to { opacity: 1; transform: translateX(0); }
 }
+
+/* ==============================================
+   3D 책장 넘김 효과
+   ============================================== */
+#book { perspective: 2400px; }
+
+.page-flip-3d {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 50%;
+    transform-style: preserve-3d;
+    transform-origin: left center;
+    transform: rotateY(0deg);
+    transition: transform 550ms cubic-bezier(0.42, 0, 0.18, 1);
+    z-index: 50;
+    pointer-events: none;
+    will-change: transform;
+}
+.page-flip-3d.pf-mobile { width: 100%; }
+.page-flip-3d.pf-init-back {
+    transform: rotateY(-180deg);
+    transition: none;
+}
+.page-flip-3d.pf-go-next { transform: rotateY(-180deg); }
+.page-flip-3d.pf-go-prev { transform: rotateY(0deg); }
+
+.pf-side {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    background: var(--paper);
+    overflow: hidden;
+    display: flex;
+}
+.pf-back { transform: rotateY(180deg); }
+
+/* 회전 중 그림자 (입체감) */
+.pf-side::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 280ms ease;
+    background: linear-gradient(90deg,
+        rgba(0,0,0,0.22) 0%,
+        rgba(0,0,0,0.08) 30%,
+        rgba(0,0,0,0) 60%);
+}
+.page-flip-3d.pf-go-next .pf-front::after { opacity: 1; }
+.page-flip-3d.pf-go-prev .pf-back::after { opacity: 1; }
 
 /* ==============================================
    사이드 패널 / 설정 / 모달

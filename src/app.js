@@ -686,12 +686,14 @@ function renderReader() {
         document.fonts.ready.then(() => {
             setTimeout(() => {
                 rebuildPages();
+                _flip3dSkipNext = true;
                 renderCurrentSpread();
             }, 50);
         });
     } else {
         setTimeout(() => {
             rebuildPages();
+            _flip3dSkipNext = true;
             renderCurrentSpread();
         }, 100);
     }
@@ -744,6 +746,18 @@ function hideCover() {
 }
 
 function renderCurrentSpread(direction = 'forward') {
+    // === 3D 책장 넘김: 변경 전 우측 페이지 캡처 ===
+    const _book = document.getElementById('book');
+    const _oldRight = _book?.querySelector('.page.right');
+    const _flipEligible = !_flip3dActive
+        && !_flip3dSkipNext
+        && state.currentChapter !== -1
+        && _oldRight
+        && _book
+        && _book.offsetParent !== null;
+    const _oldRightHTML = _flipEligible ? _oldRight.outerHTML : null;
+    if (_flip3dSkipNext) _flip3dSkipNext = false;
+
     if (state.currentChapter === -1) {
         showCover();
         return;
@@ -812,6 +826,51 @@ function renderCurrentSpread(direction = 'forward') {
     updateProgress();
     updateTocHighlight();
     saveCurrentProgress();
+
+    // === 3D 책장 넘김: 변경 후 우측 페이지 캡처 후 회전 ===
+    if (_oldRightHTML && !ch.isPartCover) {
+        const _newRight = _book?.querySelector('.page.right');
+        if (_newRight) {
+            startFlip3D(direction, _oldRightHTML, _newRight.outerHTML);
+        }
+    }
+}
+
+let _flip3dActive = false;
+let _flip3dSkipNext = false;
+function startFlip3D(direction, oldRightHTML, newRightHTML) {
+    const book = document.getElementById('book');
+    if (!book || _flip3dActive) return;
+    if (!oldRightHTML || !newRightHTML || oldRightHTML === newRightHTML) return;
+
+    _flip3dActive = true;
+    const isMobile = window.innerWidth <= 900;
+
+    const flipper = document.createElement('div');
+    flipper.className = 'page-flip-3d' + (isMobile ? ' pf-mobile' : '');
+    flipper.innerHTML = `
+        <div class="pf-side pf-front">${direction === 'forward' ? oldRightHTML : newRightHTML}</div>
+        <div class="pf-side pf-back">${direction === 'forward' ? newRightHTML : oldRightHTML}</div>
+    `;
+    if (direction !== 'forward') {
+        flipper.classList.add('pf-init-back');
+    }
+    book.appendChild(flipper);
+    void flipper.offsetWidth;
+
+    requestAnimationFrame(() => {
+        flipper.classList.add(direction === 'forward' ? 'pf-go-next' : 'pf-go-prev');
+    });
+
+    let cleaned = false;
+    const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        if (flipper.parentNode) flipper.remove();
+        _flip3dActive = false;
+    };
+    flipper.addEventListener('transitionend', cleanup, { once: true });
+    setTimeout(cleanup, 800); // 안전망
 }
 
 function updateProgress() {
@@ -840,6 +899,7 @@ function goNext() {
         state.currentPagePair = 0;
         hideCover(); // 페이지 측정 전에 미리 영역 보이게
         rebuildPages();
+        _flip3dSkipNext = true; // 표지 → 첫 페이지: 빈 페이지 회전 방지
         renderCurrentSpread('forward');
         return;
     }
@@ -1127,6 +1187,7 @@ function setFontSize(size) {
     document.documentElement.style.setProperty('--font-size', state.fontSize + 'px');
     document.getElementById('fs-display').textContent = state.fontSize;
     rebuildPages();
+    _flip3dSkipNext = true;
     renderCurrentSpread('forward');
     saveCurrentProgress();
 }
@@ -1228,6 +1289,7 @@ function bindReaderEvents() {
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             rebuildPages();
+            _flip3dSkipNext = true;
             renderCurrentSpread('forward');
         }, 200);
     });
