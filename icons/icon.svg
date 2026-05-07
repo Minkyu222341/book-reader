@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2a1a0e"/>
+      <stop offset="100%" stop-color="#0e0805"/>
+    </linearGradient>
+    <linearGradient id="book" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6e2018"/>
+      <stop offset="50%" stop-color="#4a1812"/>
+      <stop offset="100%" stop-color="#2a0a06"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 배경 -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- 책 -->
+  <g transform="translate(256 256)">
+    <!-- 그림자 -->
+    <ellipse cx="0" cy="160" rx="170" ry="20" fill="rgba(0,0,0,0.4)"/>
+
+    <!-- 책 본체 -->
+    <rect x="-140" y="-180" width="280" height="340" rx="6" fill="url(#book)" stroke="#b08d3a" stroke-width="2" stroke-opacity="0.5"/>
+
+    <!-- 내부 테두리 -->
+    <rect x="-122" y="-162" width="244" height="304" rx="2" fill="none" stroke="#b08d3a" stroke-width="1.5" stroke-opacity="0.45"/>
+    <rect x="-110" y="-150" width="220" height="280" rx="1" fill="none" stroke="#b08d3a" stroke-width="0.8" stroke-opacity="0.3"/>
+
+    <!-- 책등 디테일 (왼쪽) -->
+    <line x1="-140" y1="-160" x2="-140" y2="140" stroke="rgba(0,0,0,0.4)" stroke-width="3"/>
+
+    <!-- 늑대 머리 (단순화) -->
+    <g transform="translate(0 -30)" stroke="#d4af5f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" fill="none">
+      <path d="M -38 -25 L -28 -45 L -10 -38 L 0 -50 L 10 -38 L 28 -45 L 38 -25 L 35 5 L 28 25 L 12 35 L 0 38 L -12 35 L -28 25 L -35 5 Z"/>
+      <path d="M -28 -45 L -32 -65 L -16 -52"/>
+      <path d="M 28 -45 L 32 -65 L 16 -52"/>
+      <path d="M -16 -10 L -8 -6" stroke-width="4.5"/>
+      <path d="M 16 -10 L 8 -6" stroke-width="4.5"/>
+      <path d="M -6 8 L 0 18 L 6 8"/>
+      <path d="M 0 18 L 0 26"/>
+    </g>
+
+    <!-- 제목 영역 (장식선) -->
+    <line x1="-60" y1="60" x2="60" y2="60" stroke="#b08d3a" stroke-width="1" opacity="0.5"/>
+
+    <!-- 별 장식 -->
+    <text x="0" y="100" text-anchor="middle" font-family="serif" font-size="32" fill="#b08d3a">✦</text>
+
+    <line x1="-60" y1="125" x2="60" y2="125" stroke="#b08d3a" stroke-width="1" opacity="0.5"/>
+  </g>
+</svg>
