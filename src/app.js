@@ -887,7 +887,13 @@ function destroyPageFlip() {
     }
     _pfSig = null;
     const mount = document.getElementById('pageflip-mount');
-    if (mount) mount.innerHTML = '';
+    if (mount) {
+        // PageFlip 잔여물(클래스/canvas/inline style) 완전 정리
+        mount.innerHTML = '';
+        mount.className = '';
+        mount.removeAttribute('style');
+        // mount의 default 표시 상태(display)는 caller가 다시 설정한다 (renderCurrentSpread)
+    }
 }
 
 function shouldUsePageFlip() {
@@ -904,6 +910,13 @@ function setupPageFlip() {
     const book = document.getElementById('book');
     if (!mount || !book) return;
 
+    // 사이즈 검증: book(부모)이 0이면 layout 안정 후 retry
+    const bookRect = book.getBoundingClientRect();
+    if (bookRect.width < 50 || bookRect.height < 50) {
+        setTimeout(() => setupPageFlip(), 80);
+        return;
+    }
+
     const sig = pfSignature();
     if (_pf && sig === _pfSig) {
         // 동일 시그니처: 페이지 위치만 동기화
@@ -917,6 +930,8 @@ function setupPageFlip() {
     }
 
     destroyPageFlip();
+    // destroyPageFlip이 mount의 모든 inline style 제거 → 표시 상태 다시 보장
+    mount.style.display = '';
 
     const ch = state.flatChapters[state.currentChapter];
     const headerText = `${esc(ch.partTitle)} · ${esc(ch.title)}`;
@@ -934,16 +949,6 @@ function setupPageFlip() {
 
     const isMobile = window.innerWidth <= 900;
     const rect = book.getBoundingClientRect();
-
-    // 마운트 reset (이전 PageFlip이 남긴 클래스/스타일 정리)
-    mount.style.width = '';
-    mount.style.height = '';
-    mount.style.left = '';
-    mount.style.transform = '';
-    mount.style.right = '';
-    // PageFlip이 추가하는 클래스 정리 (재초기화 시 충돌 방지)
-    mount.classList.remove('stf__parent');
-    mount.querySelectorAll('canvas').forEach(c => c.remove());
 
     // Layout 강제 (PageFlip이 정확한 사이즈 측정)
     void mount.offsetWidth;
