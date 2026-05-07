@@ -931,9 +931,24 @@ function setupPageFlip() {
     const isMobile = window.innerWidth <= 900;
     const rect = book.getBoundingClientRect();
 
+    // 모바일: 마운트 자체를 portrait 비율로 강제 (PageFlip이 컨테이너 비율로 portrait 판정)
+    if (isMobile) {
+        const targetW = Math.min(rect.width, 500);
+        mount.style.width = targetW + 'px';
+        mount.style.height = rect.height + 'px';
+        mount.style.left = '50%';
+        mount.style.transform = 'translateX(-50%)';
+        mount.style.right = 'auto';
+    } else {
+        mount.style.width = '';
+        mount.style.height = '';
+        mount.style.left = '';
+        mount.style.transform = '';
+        mount.style.right = '';
+    }
+
     try {
-        // 모바일은 portrait 명확히 강제 (width/height 비율 0.5)
-        // 데스크탑은 양면 spread (페이지 한 장 = 책 너비의 절반)
+        // 모바일은 portrait (1:2 비율), 데스크탑은 양면 spread
         const pfWidth = isMobile ? 400 : Math.max(280, Math.floor(rect.width / 2));
         const pfHeight = isMobile ? 800 : Math.max(400, rect.height);
 
@@ -951,9 +966,9 @@ function setupPageFlip() {
             flippingTime: 700,
             drawShadow: true,
             maxShadowOpacity: 0.5,
-            useMouseEvents: true,
-            swipeDistance: 30,
-            clickEventForward: true,
+            // 자체 클릭/스와이프 비활성: 우리 nav-zone/탭 시스템과의 이중 처리 방지
+            useMouseEvents: false,
+            clickEventForward: false,
         });
 
         _pf.loadFromHTML(mount.querySelectorAll('.pf-page'));
