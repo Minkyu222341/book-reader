@@ -947,64 +947,67 @@ function setupPageFlip() {
         mount.appendChild(div);
     });
 
-    const isMobile = window.innerWidth <= 900;
-    const rect = book.getBoundingClientRect();
-
-    // Layout 강제 (PageFlip이 정확한 사이즈 측정)
+    // Layout 강제 (페이지 div 추가 후 mount 사이즈 정확히 측정)
     void mount.offsetWidth;
 
-    try {
-        // 모바일은 portrait (1:2 비율), 데스크탑은 양면 spread
-        // PageFlip은 컨테이너 비율로 portrait/landscape 자체 판정 (폰: height >> width → portrait 자동)
-        const pfWidth = isMobile ? 400 : Math.max(280, Math.floor(rect.width / 2));
-        const pfHeight = isMobile ? 800 : Math.max(400, rect.height);
+    // RAF로 layout 안정 후 PageFlip 생성 (특히 mode 전환 직후 사이즈 0 방지)
+    requestAnimationFrame(() => {
+        const isMobile = window.innerWidth <= 900;
+        const rect = book.getBoundingClientRect();
+        const mountRect = mount.getBoundingClientRect();
 
-        // 안전한 시작 페이지 (인덱스 범위 보호)
-        const startIdx = Math.max(0, Math.min(state.currentPagePair, state.pages.length - 1));
+        // mount 사이즈가 여전히 0이면 한 번 더 RAF 대기
+        if (mountRect.width < 50 || mountRect.height < 50) {
+            requestAnimationFrame(() => setupPageFlip());
+            return;
+        }
 
-        _pf = new PageFlip(mount, {
-            width: pfWidth,
-            height: pfHeight,
-            size: 'stretch',
-            minWidth: 280,
-            maxWidth: 1400,
-            minHeight: 400,
-            maxHeight: 1800,
-            showCover: false,
-            usePortrait: true,
-            mobileScrollSupport: false,
-            flippingTime: 700,
-            drawShadow: true,
-            maxShadowOpacity: 0.5,
-            // 시작 페이지를 init 시 직접 지정 (turnToPage 점프보다 안정)
-            startPage: startIdx,
-            // 자체 클릭/스와이프 비활성: 우리 nav-zone/탭 시스템과의 이중 처리 방지
-            useMouseEvents: false,
-            clickEventForward: false,
-        });
+        try {
+            const pfWidth = isMobile ? 400 : Math.max(280, Math.floor(rect.width / 2));
+            const pfHeight = isMobile ? 800 : Math.max(400, rect.height);
+            const startIdx = Math.max(0, Math.min(state.currentPagePair, state.pages.length - 1));
 
-        _pf.loadFromHTML(mount.querySelectorAll('.pf-page'));
-        _pfSig = sig;
-        // currentPagePair을 실제 시작값으로 동기화 (PageFlip이 startPage로 시작)
-        state.currentPagePair = startIdx;
+            _pf = new PageFlip(mount, {
+                width: pfWidth,
+                height: pfHeight,
+                size: 'stretch',
+                minWidth: 280,
+                maxWidth: 1400,
+                minHeight: 400,
+                maxHeight: 1800,
+                showCover: false,
+                usePortrait: true,
+                mobileScrollSupport: false,
+                flippingTime: 700,
+                drawShadow: true,
+                maxShadowOpacity: 0.5,
+                startPage: startIdx,
+                useMouseEvents: false,
+                clickEventForward: false,
+            });
 
-        _pf.on('flip', (e) => {
-            state.currentPagePair = e.data;
-            saveCurrentProgress();
-            updateProgress();
-            updateBookmarkRibbon();
-            updateTocHighlight();
-        });
+            _pf.loadFromHTML(mount.querySelectorAll('.pf-page'));
+            _pfSig = sig;
+            state.currentPagePair = startIdx;
 
-        // 사이즈 재측정 (간헐적 빈 화면 방지) — 라이브러리에 update 메서드 있으면 호출
-        setTimeout(() => {
-            try {
-                if (_pf && typeof _pf.update === 'function') _pf.update();
-            } catch (e) { /* noop */ }
-        }, 80);
-    } catch (err) {
-        console.error('PageFlip 초기화 실패:', err);
-    }
+            _pf.on('flip', (e) => {
+                state.currentPagePair = e.data;
+                saveCurrentProgress();
+                updateProgress();
+                updateBookmarkRibbon();
+                updateTocHighlight();
+            });
+
+            // 한 frame 후 update() 호출 — wrap 사이즈 재측정
+            requestAnimationFrame(() => {
+                try {
+                    if (_pf && typeof _pf.update === 'function') _pf.update();
+                } catch (e) { /* noop */ }
+            });
+        } catch (err) {
+            console.error('PageFlip 초기화 실패:', err);
+        }
+    });
 }
 
 let _flip3dActive = false;
