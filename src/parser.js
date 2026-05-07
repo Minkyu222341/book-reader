@@ -2,6 +2,29 @@
 // 텍본 파서: .txt 파일을 부/챕터 구조로 변환
 // =====================================================
 
+// 제목 후보 검증: 한글/영문/숫자가 충분히 포함되어야 함
+function isValidTitleCandidate(s) {
+    if (!s || s.length === 0 || s.length >= 80) return false;
+    if (/^<.*>$/.test(s)) return false;
+    if (/^Chapter/i.test(s)) return false;
+    if (/^프롤로그/.test(s)) return false;
+    const meaningful = (s.match(/[가-힣A-Za-z0-9]/g) || []).length;
+    // 의미있는 글자 2개 이상 + 전체의 30% 이상
+    return meaningful >= 2 && meaningful / s.length >= 0.3;
+}
+
+// 제목/저자 양 끝의 구분자/장식 문자 정리
+// 허용: 한글, 영문, 숫자, 일반 부호 (.()+ 공백 등)
+function sanitizeTitle(s) {
+    if (!s) return '';
+    // 첫 한글/영문/숫자/( 부터 마지막 한글/영문/숫자/) 까지만 추출
+    const m = s.match(/[가-힣A-Za-z0-9(].*[가-힣A-Za-z0-9)]/);
+    let cleaned = m ? m[0] : s;
+    // 양 끝 공백/.+_ 정리
+    cleaned = cleaned.replace(/^[\s.+_]+|[\s.+_]+$/g, '').trim();
+    return cleaned;
+}
+
 /**
  * 텍스트를 분석해서 소설 구조를 추출한다.
  * @param {string} rawText - 원본 텍스트
@@ -28,15 +51,24 @@ export function parseNovel(rawText, options = {}) {
             // "-홍길동" 또는 "by 홍길동" 패턴
             const authorMatch = ln.match(/^[-—]\s*(.+)$/) || ln.match(/^by\s+(.+)$/i) || ln.match(/^지은이\s*[:：]?\s*(.+)$/);
             if (authorMatch && !detectedAuthor) {
-                detectedAuthor = authorMatch[1].trim();
+                const cleanedAuthor = sanitizeTitle(authorMatch[1]);
+                if (cleanedAuthor) detectedAuthor = cleanedAuthor;
                 continue;
             }
             // 첫 번째 의미있는 줄을 제목으로
-            if (!detectedTitle && ln.length > 0 && ln.length < 80 && !/^<.*>$/.test(ln) && !/^Chapter/i.test(ln) && !/^프롤로그/.test(ln)) {
-                detectedTitle = ln;
+            if (!detectedTitle && isValidTitleCandidate(ln)) {
+                const cleaned = sanitizeTitle(ln);
+                if (cleaned && isValidTitleCandidate(cleaned)) {
+                    detectedTitle = cleaned;
+                }
             }
             if (detectedTitle && detectedAuthor) break;
         }
+    }
+    // Fallback: 파일명에서 확장자 제거 후 사용
+    if (!detectedTitle && options.fileName) {
+        const fromFile = sanitizeTitle(options.fileName.replace(/\.[^.]+$/, ''));
+        if (fromFile) detectedTitle = fromFile;
     }
     if (!detectedTitle) detectedTitle = '제목 없음';
     if (!detectedAuthor) detectedAuthor = '저자 미상';

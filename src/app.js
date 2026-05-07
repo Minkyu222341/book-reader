@@ -323,6 +323,7 @@ async function renderLibrary() {
                             ${progPct > 0 ? `<div class="book-progress-bar"><div style="width:${progPct}%"></div></div>` : ''}
                         </div>
                     </div>
+                    <button class="book-edit" data-edit="${esc(book.id)}" title="제목 수정">✎</button>
                     <button class="book-delete" data-del="${esc(book.id)}" title="삭제">×</button>
                 </div>
             `;
@@ -345,7 +346,7 @@ async function renderLibrary() {
 
     document.querySelectorAll('.book-card').forEach(card => {
         card.addEventListener('click', (e) => {
-            if (e.target.dataset.del) return;
+            if (e.target.dataset.del || e.target.dataset.edit) return;
             openBook(card.dataset.bookId);
         });
     });
@@ -358,6 +359,22 @@ async function renderLibrary() {
                 showToast('삭제되었습니다');
                 renderLibrary();
             }
+        });
+    });
+    document.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.edit;
+            const book = await getBook(id);
+            if (!book) return;
+            const newTitle = prompt('새 제목을 입력하세요', book.title);
+            if (newTitle === null) return; // 취소
+            const trimmed = newTitle.trim();
+            if (!trimmed || trimmed === book.title) return;
+            book.title = trimmed;
+            await saveBook(book);
+            showToast('제목이 변경되었습니다');
+            renderLibrary();
         });
     });
 
@@ -441,7 +458,7 @@ async function processFiles(files) {
         textEl.textContent = `${i + 1}/${files.length} · ${file.name} 처리 중...`;
         try {
             const text = await readFileAsText(file);
-            const parsed = parseNovel(text);
+            const parsed = parseNovel(text, { fileName: file.name });
             if (parsed.parts.length === 0 || parsed.stats.charCount < 100) {
                 showToast(`"${file.name}": 본문이 너무 짧습니다`);
                 continue;
