@@ -1,5 +1,5 @@
 // 캐시 이름 — 빌드 시 build.py가 __BUILD_VERSION__ 부분을 timestamp로 치환합니다
-const CACHE = 'book-reader-v1778130730';
+const CACHE = 'book-reader-v1778131467';
 
 const ASSETS = [
     './',
@@ -10,6 +10,8 @@ const ASSETS = [
     './src/db.js',
     './src/app.js',
     './src/main.js',
+    './vendor/page-flip.module.js',
+    './vendor/page-flip.css',
     'https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Nanum+Myeongjo:wght@400;700;800&display=swap'
 ];
 

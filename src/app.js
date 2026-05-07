@@ -2,6 +2,7 @@
 // 메인 UI: 라이브러리 + 뷰어
 // =====================================================
 import { parseNovel } from './parser.js';
+import { PageFlip } from '../vendor/page-flip.module.js';
 import {
     saveBook, getBook, listBooks, deleteBook,
     saveProgress, getProgress,
@@ -223,7 +224,21 @@ function rebuildPages() {
     }
     const ch = state.flatChapters[state.currentChapter];
     if (!ch) return;
+
+    // PageFlip 활성 시 .page.right가 hidden 상태 → 측정 위해 임시로 layout 차지하게
+    const pageRight = document.getElementById('page-right');
+    const wasHidden = pageRight && pageRight.style.display === 'none';
+    if (wasHidden) {
+        pageRight.style.visibility = 'hidden';
+        pageRight.style.display = '';
+    }
+
     state.pages = paginate(ch);
+
+    if (wasHidden) {
+        pageRight.style.display = 'none';
+        pageRight.style.visibility = '';
+    }
 }
 
 // =====================================================
@@ -575,7 +590,7 @@ function renderReader() {
                         </div>
                     </div>
 
-                    <!-- 본문 -->
+                    <!-- 본문 (측정 + 표지/부표지 fallback용) -->
                     <div class="page left" id="page-left">
                         <div class="page-header" id="header-left"></div>
                         <div class="page-content" id="content-left"></div>
@@ -587,6 +602,9 @@ function renderReader() {
                         <div class="page-footer" id="footer-right"></div>
                         <div class="bookmark-ribbon" id="bookmark-ribbon" title="북마크 있음"></div>
                     </div>
+
+                    <!-- PageFlip 마운트 (본문 챕터 시 활성) -->
+                    <div id="pageflip-mount" style="display:none"></div>
 
                     <div class="nav-zone left" id="nav-prev" title="이전 (←)">
                         <span class="nav-arrow">‹</span>
@@ -754,19 +772,15 @@ function hideCover() {
 }
 
 function renderCurrentSpread(direction = 'forward') {
-    // === 3D 책장 넘김: 변경 전 우측 페이지 캡처 ===
-    const _book = document.getElementById('book');
-    const _oldRight = _book?.querySelector('.page.right');
-    const _flipEligible = !_flip3dActive
-        && !_flip3dSkipNext
-        && state.currentChapter !== -1
-        && _oldRight
-        && _book
-        && _book.offsetParent !== null;
-    const _oldRightHTML = _flipEligible ? _oldRight.outerHTML : null;
     if (_flip3dSkipNext) _flip3dSkipNext = false;
 
     if (state.currentChapter === -1) {
+        // 표지: PageFlip 비활성, 기존 page 영역 보이게
+        destroyPageFlip();
+        const mount = document.getElementById('pageflip-mount');
+        if (mount) mount.style.display = 'none';
+        document.getElementById('page-left').style.display = '';
+        document.getElementById('page-right').style.display = '';
         showCover();
         return;
     }
@@ -822,25 +836,129 @@ function renderCurrentSpread(direction = 'forward') {
         }
     }
 
-    const animClass = direction === 'forward' ? 'page-flip-enter' : 'page-flip-back';
-    [leftEl, rightEl].forEach(el => {
-        if (!el) return;
-        el.classList.remove('page-flip-enter', 'page-flip-back');
-        void el.offsetWidth;
-        el.classList.add(animClass);
-    });
+    // PageFlip 모드 / 기존 모드 분기
+    const mount = document.getElementById('pageflip-mount');
+    if (shouldUsePageFlip()) {
+        // 본문 챕터: PageFlip 활성
+        document.getElementById('page-left').style.display = 'none';
+        document.getElementById('page-right').style.display = 'none';
+        if (mount) mount.style.display = '';
+        setupPageFlip();
+    } else {
+        // 부 표지 등: 기존 .page 모드
+        destroyPageFlip();
+        if (mount) mount.style.display = 'none';
+        document.getElementById('page-left').style.display = '';
+        document.getElementById('page-right').style.display = '';
+    }
 
     updateBookmarkRibbon();
     updateProgress();
     updateTocHighlight();
     saveCurrentProgress();
+}
 
-    // === 3D 책장 넘김: 변경 후 우측 페이지 캡처 후 회전 ===
-    if (_oldRightHTML && !ch.isPartCover) {
-        const _newRight = _book?.querySelector('.page.right');
-        if (_newRight) {
-            startFlip3D(direction, _oldRightHTML, _newRight.outerHTML);
+// =====================================================
+// 페이지 컬 (StPageFlip)
+// =====================================================
+let _pf = null;
+let _pfSig = null;
+
+function pfSignature() {
+    return `${state.currentChapter}|${state.fontSize}|${window.innerWidth <= 900}|${state.pages.length}`;
+}
+
+function destroyPageFlip() {
+    if (_pf) {
+        try { _pf.destroy(); } catch (e) { /* noop */ }
+        _pf = null;
+    }
+    _pfSig = null;
+    const mount = document.getElementById('pageflip-mount');
+    if (mount) mount.innerHTML = '';
+}
+
+function shouldUsePageFlip() {
+    if (state.currentChapter === -1) return false;
+    const ch = state.flatChapters[state.currentChapter];
+    if (!ch || ch.isPartCover) return false;
+    if (!state.pages || state.pages.length === 0) return false;
+    return true;
+}
+
+function setupPageFlip() {
+    const mount = document.getElementById('pageflip-mount');
+    const book = document.getElementById('book');
+    if (!mount || !book) return;
+
+    const sig = pfSignature();
+    if (_pf && sig === _pfSig) {
+        // 동일 시그니처: 페이지 위치만 동기화
+        try {
+            const cur = _pf.getCurrentPageIndex();
+            if (cur !== state.currentPagePair) {
+                _pf.turnToPage(state.currentPagePair);
+            }
+        } catch (e) { /* noop */ }
+        return;
+    }
+
+    destroyPageFlip();
+
+    const ch = state.flatChapters[state.currentChapter];
+    const headerText = `${esc(ch.partTitle)} · ${esc(ch.title)}`;
+
+    state.pages.forEach((p, idx) => {
+        const div = document.createElement('div');
+        div.className = 'pf-page';
+        div.innerHTML = `
+            <div class="page-header">${headerText}</div>
+            <div class="page-content" style="font-size: ${state.fontSize}px">${p.html}</div>
+            <div class="page-footer">${idx + 1} / ${state.pages.length}</div>
+        `;
+        mount.appendChild(div);
+    });
+
+    const isMobile = window.innerWidth <= 900;
+    const rect = book.getBoundingClientRect();
+
+    try {
+        _pf = new PageFlip(mount, {
+            width: isMobile ? Math.max(280, rect.width) : Math.max(280, Math.floor(rect.width / 2)),
+            height: Math.max(400, rect.height),
+            size: 'stretch',
+            minWidth: 280,
+            maxWidth: 1400,
+            minHeight: 400,
+            maxHeight: 1800,
+            showCover: false,
+            usePortrait: isMobile,
+            mobileScrollSupport: false,
+            flippingTime: 700,
+            drawShadow: true,
+            maxShadowOpacity: 0.5,
+            useMouseEvents: true,
+            swipeDistance: 30,
+            clickEventForward: true,
+        });
+
+        _pf.loadFromHTML(mount.querySelectorAll('.pf-page'));
+        _pfSig = sig;
+
+        // 페이지 위치 복원
+        if (state.currentPagePair > 0 && state.currentPagePair < state.pages.length) {
+            try { _pf.turnToPage(state.currentPagePair); } catch (e) { /* noop */ }
         }
+
+        _pf.on('flip', (e) => {
+            state.currentPagePair = e.data;
+            saveCurrentProgress();
+            updateProgress();
+            updateBookmarkRibbon();
+            updateTocHighlight();
+        });
+    } catch (err) {
+        console.error('PageFlip 초기화 실패:', err);
     }
 }
 
@@ -913,12 +1031,34 @@ function goNext() {
     if (state.currentChapter === -1) {
         state.currentChapter = 0;
         state.currentPagePair = 0;
-        hideCover(); // 페이지 측정 전에 미리 영역 보이게
+        hideCover();
         rebuildPages();
-        _flip3dSkipNext = true; // 표지 → 첫 페이지: 빈 페이지 회전 방지
+        _flip3dSkipNext = true;
         renderCurrentSpread('forward');
         return;
     }
+
+    // 본문 챕터(PageFlip 모드): 라이브러리 API 사용. 챕터 끝이면 다음 챕터로
+    if (shouldUsePageFlip() && _pf) {
+        try {
+            const cur = _pf.getCurrentPageIndex();
+            const total = state.pages.length;
+            if (cur < total - 1) {
+                _pf.flipNext();
+                return;
+            }
+        } catch (e) { /* fallthrough */ }
+        // 마지막 페이지 → 다음 챕터
+        if (state.currentChapter < state.flatChapters.length - 1) {
+            state.currentChapter++;
+            state.currentPagePair = 0;
+            rebuildPages();
+            renderCurrentSpread('forward');
+        }
+        return;
+    }
+
+    // 부 표지 등 (기존 모드): spread 단위 이동
     const isMobile = window.innerWidth <= 900;
     const pagesPerSpread = isMobile ? 1 : 2;
     const lastSpread = Math.ceil(state.pages.length / pagesPerSpread) - 1;
@@ -936,6 +1076,34 @@ function goNext() {
 
 function goPrev() {
     if (state.currentChapter === -1) return;
+
+    // 본문 챕터(PageFlip 모드): 라이브러리 API 사용. 챕터 시작이면 이전 챕터 마지막으로
+    if (shouldUsePageFlip() && _pf) {
+        try {
+            const cur = _pf.getCurrentPageIndex();
+            if (cur > 0) {
+                _pf.flipPrev();
+                return;
+            }
+        } catch (e) { /* fallthrough */ }
+        // 첫 페이지 → 이전 챕터 마지막
+        if (state.currentChapter > 0) {
+            state.currentChapter--;
+            rebuildPages();
+            const isMobile = window.innerWidth <= 900;
+            const pagesPerSpread = isMobile ? 1 : 2;
+            state.currentPagePair = Math.max(0, Math.ceil(state.pages.length / pagesPerSpread) - 1);
+            renderCurrentSpread('back');
+        } else {
+            // 첫 챕터 첫 페이지 → 표지로
+            state.currentChapter = -1;
+            state.currentPagePair = 0;
+            renderCurrentSpread('back');
+        }
+        return;
+    }
+
+    // 부 표지 등 (기존 모드)
     if (state.currentPagePair > 0) {
         state.currentPagePair--;
         renderCurrentSpread('back');

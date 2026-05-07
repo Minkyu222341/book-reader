@@ -1008,7 +1008,76 @@ body {
 }
 
 /* ==============================================
-   3D 책장 넘김 효과
+   StPageFlip (페이지 컬) 통합
+   ============================================== */
+#pageflip-mount {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+}
+#pageflip-mount .stf__parent {
+    width: 100% !important;
+    height: 100% !important;
+}
+.pf-page {
+    background: var(--paper);
+    padding: 50px 60px 60px 60px;
+    box-sizing: border-box;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            transparent 0,
+            transparent 2px,
+            rgba(120, 90, 50, 0.012) 2px,
+            rgba(120, 90, 50, 0.012) 3px
+        );
+}
+@media (max-width: 900px) {
+    .pf-page { padding: 30px 24px; }
+}
+@media (max-width: 600px) {
+    .pf-page { padding: 24px 18px; }
+}
+.pf-page .page-content {
+    flex: 1;
+    overflow: hidden;
+    font-family: 'Noto Serif KR', 'Nanum Myeongjo', serif;
+    font-size: var(--font-size);
+    line-height: 1.95;
+    color: var(--ink);
+    text-align: justify;
+}
+.pf-page .page-content p {
+    text-indent: 1em;
+    margin: 0 0 0.5em 0;
+}
+.pf-page .page-content p.dialogue { text-indent: 0; }
+.pf-page .page-header {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--ink-fade);
+    text-align: center;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(120, 90, 50, 0.15);
+    letter-spacing: 0.05em;
+}
+.pf-page .page-footer {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 12px;
+    color: var(--ink-fade);
+    text-align: center;
+    padding-top: 10px;
+    margin-top: 12px;
+    letter-spacing: 0.05em;
+}
+
+/* ==============================================
+   3D 책장 넘김 효과 (legacy, 부 표지 등 fallback용)
    ============================================== */
 #book { perspective: 2400px; }
 
