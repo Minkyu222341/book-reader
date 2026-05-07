@@ -135,6 +135,8 @@ const DEFAULT_SETTINGS = {
     touchNext: 0.30,    // 우측 30% → 다음 페이지
     // 중앙 영역(나머지)은 탭하면 메뉴 토글
     tapCenterAction: 'menu', // 'menu' | 'next' | 'none'
+    // 페이지 전환 효과
+    pageTransition: 'curl',  // 'curl' (책장 넘김) | 'none' (즉시 전환)
 };
 
 export function getAppSettings() {

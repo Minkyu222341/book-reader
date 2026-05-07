@@ -645,6 +645,14 @@ function renderReader() {
                     </div>
                 </div>
 
+                <div class="settings-row">
+                    <div class="settings-h">페이지 전환</div>
+                    <div class="seg-row">
+                        <button class="seg-btn ${state.appSettings.pageTransition === 'curl' ? 'active' : ''}" data-transition="curl">책장 넘김</button>
+                        <button class="seg-btn ${state.appSettings.pageTransition === 'none' ? 'active' : ''}" data-transition="none">즉시 전환</button>
+                    </div>
+                </div>
+
                 <div class="settings-row mobile-only">
                     <div class="settings-h">탭 영역</div>
                     <div class="settings-desc">화면 좌/우 끝을 탭하면 페이지 이동, 가운데를 탭하면 메뉴가 열립니다.</div>
@@ -879,6 +887,7 @@ function destroyPageFlip() {
 }
 
 function shouldUsePageFlip() {
+    if (state.appSettings && state.appSettings.pageTransition === 'none') return false;
     if (state.currentChapter === -1) return false;
     const ch = state.flatChapters[state.currentChapter];
     if (!ch || ch.isPartCover) return false;
@@ -923,16 +932,21 @@ function setupPageFlip() {
     const rect = book.getBoundingClientRect();
 
     try {
+        // 모바일은 portrait 명확히 강제 (width/height 비율 0.5)
+        // 데스크탑은 양면 spread (페이지 한 장 = 책 너비의 절반)
+        const pfWidth = isMobile ? 400 : Math.max(280, Math.floor(rect.width / 2));
+        const pfHeight = isMobile ? 800 : Math.max(400, rect.height);
+
         _pf = new PageFlip(mount, {
-            width: isMobile ? Math.max(280, rect.width) : Math.max(280, Math.floor(rect.width / 2)),
-            height: Math.max(400, rect.height),
+            width: pfWidth,
+            height: pfHeight,
             size: 'stretch',
             minWidth: 280,
             maxWidth: 1400,
             minHeight: 400,
             maxHeight: 1800,
             showCover: false,
-            usePortrait: isMobile,
+            usePortrait: true,
             mobileScrollSupport: false,
             flippingTime: 700,
             drawShadow: true,
@@ -1525,6 +1539,18 @@ function bindTouchZoneSettings() {
             btn.classList.add('active');
             state.appSettings.tapCenterAction = btn.dataset.center;
             saveAppSettings(state.appSettings);
+        });
+    });
+
+    document.querySelectorAll('.seg-btn[data-transition]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.seg-btn[data-transition]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.appSettings.pageTransition = btn.dataset.transition;
+            saveAppSettings(state.appSettings);
+            // 즉시 적용: PageFlip 인스턴스 정리 후 재렌더
+            destroyPageFlip();
+            renderCurrentSpread('forward');
         });
     });
 }
