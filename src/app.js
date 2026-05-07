@@ -954,6 +954,9 @@ function setupPageFlip() {
         const pfWidth = isMobile ? 400 : Math.max(280, Math.floor(rect.width / 2));
         const pfHeight = isMobile ? 800 : Math.max(400, rect.height);
 
+        // 안전한 시작 페이지 (인덱스 범위 보호)
+        const startIdx = Math.max(0, Math.min(state.currentPagePair, state.pages.length - 1));
+
         _pf = new PageFlip(mount, {
             width: pfWidth,
             height: pfHeight,
@@ -968,6 +971,8 @@ function setupPageFlip() {
             flippingTime: 700,
             drawShadow: true,
             maxShadowOpacity: 0.5,
+            // 시작 페이지를 init 시 직접 지정 (turnToPage 점프보다 안정)
+            startPage: startIdx,
             // 자체 클릭/스와이프 비활성: 우리 nav-zone/탭 시스템과의 이중 처리 방지
             useMouseEvents: false,
             clickEventForward: false,
@@ -975,11 +980,8 @@ function setupPageFlip() {
 
         _pf.loadFromHTML(mount.querySelectorAll('.pf-page'));
         _pfSig = sig;
-
-        // 페이지 위치 복원
-        if (state.currentPagePair > 0 && state.currentPagePair < state.pages.length) {
-            try { _pf.turnToPage(state.currentPagePair); } catch (e) { /* noop */ }
-        }
+        // currentPagePair을 실제 시작값으로 동기화 (PageFlip이 startPage로 시작)
+        state.currentPagePair = startIdx;
 
         _pf.on('flip', (e) => {
             state.currentPagePair = e.data;
@@ -1051,12 +1053,8 @@ function updateProgress() {
     const ch = state.flatChapters[state.currentChapter];
     let pageInfo = '';
     if (ch && !ch.isPartCover && state.pages.length > 1) {
-        const isMobile = window.innerWidth <= 900;
-        if (isMobile) {
-            pageInfo = ` · ${state.currentPagePair + 1}/${state.pages.length}`;
-        } else {
-            pageInfo = ` · ${state.currentPagePair * 2 + 1}-${Math.min(state.currentPagePair * 2 + 2, state.pages.length)}/${state.pages.length}`;
-        }
+        // PageFlip 모드 통일: state.currentPagePair는 page index
+        pageInfo = ` · ${state.currentPagePair + 1}/${state.pages.length}`;
     }
     const el = document.getElementById('progress-text');
     if (el) el.textContent = `${cur}/${total}${pageInfo}`;
@@ -1128,9 +1126,9 @@ function goPrev() {
         if (state.currentChapter > 0) {
             state.currentChapter--;
             rebuildPages();
-            const isMobile = window.innerWidth <= 900;
-            const pagesPerSpread = isMobile ? 1 : 2;
-            state.currentPagePair = Math.max(0, Math.ceil(state.pages.length / pagesPerSpread) - 1);
+            // PageFlip은 page index 단위 (양면이든 단면이든)
+            // fallback (부 표지)이면 단일 페이지라 0 또는 lastIdx 동일
+            state.currentPagePair = Math.max(0, state.pages.length - 1);
             renderCurrentSpread('back');
         } else {
             // 첫 챕터 첫 페이지 → 표지로
