@@ -249,15 +249,11 @@ async function renderLibrary() {
     let html = `
         <div id="library-view">
             <div class="lib-header">
-                <h1 class="lib-title">나의 서재</h1>
-                <p class="lib-subtitle">${books.length === 0 ? '텍본 파일을 업로드해 책장을 채워보세요' : `${books.length}권의 책`}</p>
-            </div>
-
-            <div class="lib-actions">
-                <button class="lib-add-btn" id="lib-add-btn">
-                    <span class="add-icon">+</span>
-                    <span>텍본 업로드</span>
-                </button>
+                <div class="lib-header-text">
+                    <h1 class="lib-title">나의 서재</h1>
+                    <p class="lib-subtitle">${books.length === 0 ? '텍본 파일을 업로드해 책장을 채워보세요' : `${books.length}권의 책`}</p>
+                </div>
+                <button class="lib-add-mini" id="lib-add-mini" title="텍본 추가">＋</button>
                 <input type="file" id="file-input" accept=".txt,text/plain" style="display:none" multiple>
             </div>
 
@@ -269,7 +265,7 @@ async function renderLibrary() {
             <div class="lib-empty">
                 <div class="empty-icon">📚</div>
                 <h2>아직 책이 없습니다</h2>
-                <p>위의 <strong>텍본 업로드</strong> 버튼을 눌러<br>.txt 파일을 추가해주세요.</p>
+                <p>우측 상단의 <strong>＋</strong> 버튼을 눌러<br>.txt 파일을 추가해주세요.</p>
                 <p class="empty-hint">
                     인식하는 챕터 패턴:<br>
                     <code>프롤로그 / 에필로그 / Chapter N / 제N장 / 제N화 / N화. ...</code><br>
@@ -339,7 +335,7 @@ async function renderLibrary() {
     document.getElementById('app-content').innerHTML = html;
 
     // 이벤트 바인딩
-    document.getElementById('lib-add-btn').addEventListener('click', () => {
+    document.getElementById('lib-add-mini').addEventListener('click', () => {
         document.getElementById('file-input').click();
     });
     document.getElementById('file-input').addEventListener('change', handleFileUpload);

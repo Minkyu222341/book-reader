@@ -60,11 +60,40 @@ body {
 #library-view::-webkit-scrollbar-track { background: transparent; }
 
 .lib-header {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     margin-bottom: 32px;
     padding-bottom: 28px;
     border-bottom: 1px solid rgba(176, 141, 58, 0.2);
 }
+.lib-header-text {
+    flex: 1;
+    min-width: 0;
+}
+.lib-add-mini {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    color: var(--paper);
+    border: 1px solid rgba(212, 175, 95, 0.4);
+    cursor: pointer;
+    font-size: 22px;
+    font-family: inherit;
+    line-height: 1;
+    padding: 0;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    transition: all 0.2s ease;
+}
+.lib-add-mini:hover {
+    border-color: var(--gold);
+    transform: scale(1.05);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+}
+.lib-add-mini:active { transform: scale(0.95); }
 .lib-title {
     font-family: 'Nanum Myeongjo', serif;
     font-size: 36px;
