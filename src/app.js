@@ -263,14 +263,8 @@ async function renderLibrary() {
     if (books.length === 0) {
         html += `
             <div class="lib-empty">
-                <div class="empty-icon">📚</div>
                 <h2>아직 책이 없습니다</h2>
                 <p>우측 상단의 <strong>＋</strong> 버튼을 눌러<br>.txt 파일을 추가해주세요.</p>
-                <p class="empty-hint">
-                    인식하는 챕터 패턴:<br>
-                    <code>프롤로그 / 에필로그 / Chapter N / 제N장 / 제N화 / N화. ...</code><br>
-                    부 패턴: <code>&lt;1부 : ...&gt; / Part 1 / 제1부 / 외전 - ...</code>
-                </p>
             </div>
         `;
     } else {
@@ -395,7 +389,7 @@ function setupDragDrop() {
     if (!dragOverlay) {
         dragOverlay = document.createElement('div');
         dragOverlay.id = 'drag-overlay';
-        dragOverlay.innerHTML = '<div class="drag-msg">📖 텍본 파일을 놓으세요</div>';
+        dragOverlay.innerHTML = '<div class="drag-msg">텍본 파일을 놓으세요</div>';
         document.body.appendChild(dragOverlay);
     }
 
@@ -534,7 +528,7 @@ async function openBook(bookId) {
     // 첫 책 진입 시 탭 영역 안내 (1회만)
     if (!localStorage.getItem('hint-tap-zones-shown')) {
         setTimeout(() => {
-            showToast('💡 좌/우 끝 탭으로 페이지 이동 · 영역은 ⚙ 설정에서 조정', 4500);
+            showToast('좌/우 끝 탭으로 페이지 이동 · 영역은 설정에서 조정', 4500);
             localStorage.setItem('hint-tap-zones-shown', '1');
         }, 1500);
     }
@@ -544,9 +538,10 @@ function renderReader() {
     const html = `
         <div id="reader-view">
             <div id="toolbar">
-                <button class="tb-btn" id="btn-back" title="서재로">‹ 서재</button>
                 <button class="tb-btn" id="btn-toc" title="목차 (T)">≡</button>
-                <button class="tb-btn" id="btn-bookmark-add" title="북마크 추가 (B)">❦</button>
+                <button class="tb-btn tb-icon" id="btn-bookmark-add" title="북마크 추가 (B)" aria-label="북마크 추가">
+                    <svg viewBox="0 0 14 18" width="14" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2 1 L12 1 L12 17 L7 13 L2 17 Z"/></svg>
+                </button>
                 <span class="tb-title" id="tb-title">${esc(state.currentBook.title)}</span>
                 <span class="tb-progress" id="progress-text">—</span>
                 <button class="tb-btn" id="btn-settings" title="설정 (S)">⚙</button>
@@ -872,7 +867,15 @@ function startFlip3D(direction, oldRightHTML, newRightHTML) {
     void flipper.offsetWidth;
 
     requestAnimationFrame(() => {
-        flipper.classList.add(direction === 'forward' ? 'pf-go-next' : 'pf-go-prev');
+        if (direction === 'forward') {
+            flipper.classList.add('pf-go-next');
+        } else {
+            // pf-init-back 제거 → transition 활성화, 다음 프레임에 transform 변경
+            flipper.classList.remove('pf-init-back');
+            requestAnimationFrame(() => {
+                flipper.classList.add('pf-go-prev');
+            });
+        }
     });
 
     let cleaned = false;
@@ -1021,7 +1024,7 @@ function renderToc() {
     let html = '';
 
     html += `<div class="toc-part">
-        <div class="toc-chapter toc-cover-link" data-chapter-idx="-1" style="padding-left: 24px; color: var(--gold); font-family: 'Nanum Myeongjo', serif; font-weight: 700; letter-spacing: 0.1em;">📖 표지</div>
+        <div class="toc-chapter toc-cover-link" data-chapter-idx="-1" style="padding-left: 24px; color: var(--gold); font-family: 'Nanum Myeongjo', serif; font-weight: 700; letter-spacing: 0.1em;">표지</div>
     </div>`;
 
     let flatIdx = 0;
@@ -1126,8 +1129,8 @@ function renderBookmarks() {
     if (state.bookmarks.length === 0) {
         container.innerHTML = `<div class="bm-empty">
             아직 북마크가 없습니다.<br><br>
-            상단의 <strong style="color: var(--gold);">❦</strong> 버튼을<br>
-            누르거나 <kbd style="background: rgba(176,141,58,0.15); padding: 2px 6px; border-radius: 2px; color: var(--gold);">B</kbd> 키로 추가하세요.
+            상단의 <strong style="color: var(--gold);">북마크</strong> 버튼을 누르거나<br>
+            <kbd style="background: rgba(176,141,58,0.15); padding: 2px 6px; border-radius: 2px; color: var(--gold);">B</kbd> 키로 추가하세요.
         </div>`;
         return;
     }
@@ -1223,10 +1226,6 @@ async function saveCurrentProgress() {
 // 이벤트 바인딩 (리더)
 // =====================================================
 function bindReaderEvents() {
-    document.getElementById('btn-back').addEventListener('click', () => {
-        history.back();
-    });
-
     // 데스크탑: nav-zone 클릭 (모바일에선 CSS로 숨김)
     document.getElementById('nav-prev').addEventListener('click', goPrev);
     document.getElementById('nav-next').addEventListener('click', goNext);
@@ -1386,6 +1385,10 @@ function readerKeyHandler(e) {
         case 'b': case 'B': openBookmarkModal(); break;
         case 's': case 'S': toggleSettingsPanel(); break;
         case 'h': case 'H': goToCover(); break;
+        case 'Backspace':
+            e.preventDefault();
+            history.back();
+            break;
         case '+': case '=': setFontSize(state.fontSize + 1); break;
         case '-': case '_': setFontSize(state.fontSize - 1); break;
         case 'Escape':

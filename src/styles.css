@@ -548,9 +548,14 @@ body {
     border-color: var(--gold);
     color: var(--gold);
 }
-#btn-back {
-    color: var(--gold);
-    font-weight: 600;
+.tb-btn.tb-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 9px;
+}
+.tb-btn.tb-icon svg {
+    display: block;
 }
 .tb-progress {
     color: var(--ink-fade);
@@ -1027,7 +1032,10 @@ body {
     transition: none;
 }
 .page-flip-3d.pf-go-next { transform: rotateY(-180deg); }
-.page-flip-3d.pf-go-prev { transform: rotateY(0deg); }
+.page-flip-3d.pf-go-prev {
+    transform: rotateY(0deg);
+    transition: transform 550ms cubic-bezier(0.42, 0, 0.18, 1);
+}
 
 .pf-side {
     position: absolute;
