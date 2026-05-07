@@ -42,13 +42,13 @@ function classifyParagraph(text) {
 }
 
 let _toastTimer = null;
-export function showToast(msg) {
+export function showToast(msg, duration = 1800) {
     const t = document.getElementById('toast');
     if (!t) return;
     t.textContent = msg;
     t.classList.add('show');
     if (_toastTimer) clearTimeout(_toastTimer);
-    _toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+    _toastTimer = setTimeout(() => t.classList.remove('show'), duration);
 }
 
 // =====================================================
@@ -515,7 +515,16 @@ async function openBook(bookId) {
     }
 
     state.view = 'reader';
+    history.pushState({ view: 'reader', bookId }, '');
     renderReader();
+
+    // 첫 책 진입 시 탭 영역 안내 (1회만)
+    if (!localStorage.getItem('hint-tap-zones-shown')) {
+        setTimeout(() => {
+            showToast('💡 좌/우 끝 탭으로 페이지 이동 · 영역은 ⚙ 설정에서 조정', 4500);
+            localStorage.setItem('hint-tap-zones-shown', '1');
+        }, 1500);
+    }
 }
 
 function renderReader() {
@@ -1141,9 +1150,7 @@ async function saveCurrentProgress() {
 // =====================================================
 function bindReaderEvents() {
     document.getElementById('btn-back').addEventListener('click', () => {
-        state.view = 'library';
-        state.currentBook = null;
-        renderLibrary();
+        history.back();
     });
 
     // 데스크탑: nav-zone 클릭 (모바일에선 CSS로 숨김)
@@ -1429,10 +1436,46 @@ function toggleMobileMenu() {
 }
 
 // =====================================================
+// 안드로이드 뒤로가기 처리 (history navigation)
+// =====================================================
+function setupHistoryNav() {
+    if (!history.state) {
+        history.replaceState({ view: 'library' }, '');
+    }
+    window.addEventListener('popstate', (e) => {
+        const target = e.state || { view: 'library' };
+
+        // 1순위: 모달 열려있으면 모달만 닫기
+        const modal = document.getElementById('modal-backdrop');
+        if (modal && modal.classList.contains('show')) {
+            modal.classList.remove('show');
+            history.pushState({ view: 'reader' }, '');
+            return;
+        }
+
+        // 2순위: 사이드/설정 패널 열려있으면 패널만 닫기
+        if (closeOverlaysIfOpen()) {
+            history.pushState({ view: 'reader' }, '');
+            return;
+        }
+
+        // 3순위: 리더 → 라이브러리
+        if (state.view === 'reader' && target.view !== 'reader') {
+            state.view = 'library';
+            state.currentBook = null;
+            renderLibrary();
+            return;
+        }
+        // 라이브러리 → (브라우저가 자연스럽게 종료/홈으로)
+    });
+}
+
+// =====================================================
 // 부팅
 // =====================================================
 export async function boot() {
     state.view = 'library';
+    setupHistoryNav();
     await renderLibrary();
 
     // 라이브러리 키보드 (E 키 등은 추후 확장 여지)
