@@ -559,8 +559,9 @@ function renderReader() {
                 </button>
                 <span class="tb-title" id="tb-title">${esc(state.currentBook.title)}</span>
                 <span class="tb-progress" id="progress-text">—</span>
-                <button class="tb-btn" id="btn-settings" title="설정 (S)">⚙</button>
+                <button class="tb-btn desktop-only" id="btn-settings" title="설정 (S)">⚙</button>
             </div>
+            <button class="settings-fab mobile-only" id="btn-settings-mobile" title="설정" aria-label="설정">⚙</button>
 
             <div id="book-stage">
                 <div id="book">
@@ -981,14 +982,16 @@ function setupPageFlip() {
                 flippingTime: 700,
                 drawShadow: true,
                 maxShadowOpacity: 0.5,
-                startPage: startIdx,
+                // startPage 옵션이 라이브러리 init 타이밍에 따라 누락되는 케이스 있음
+                // → 항상 0으로 시작 후 RAF 후 명시적 turnToPage 호출 (안정적)
+                startPage: 0,
                 useMouseEvents: false,
                 clickEventForward: false,
             });
 
             _pf.loadFromHTML(mount.querySelectorAll('.pf-page'));
             _pfSig = sig;
-            state.currentPagePair = startIdx;
+            state.currentPagePair = 0;
 
             _pf.on('flip', (e) => {
                 state.currentPagePair = e.data;
@@ -998,11 +1001,19 @@ function setupPageFlip() {
                 updateTocHighlight();
             });
 
-            // 한 frame 후 update() 호출 — wrap 사이즈 재측정
+            // RAF 두 번으로 PageFlip init 완료 보장 후 update + 시작 페이지 이동
             requestAnimationFrame(() => {
-                try {
-                    if (_pf && typeof _pf.update === 'function') _pf.update();
-                } catch (e) { /* noop */ }
+                requestAnimationFrame(() => {
+                    try {
+                        if (_pf) {
+                            if (typeof _pf.update === 'function') _pf.update();
+                            if (startIdx > 0) {
+                                _pf.turnToPage(startIdx);
+                                state.currentPagePair = startIdx;
+                            }
+                        }
+                    } catch (e) { /* noop */ }
+                });
             });
         } catch (err) {
             console.error('PageFlip 초기화 실패:', err);
@@ -1200,6 +1211,7 @@ function openSidePanel(tab = 'toc') {
     if (set && set.classList.contains('open')) {
         set.classList.remove('open');
         document.getElementById('btn-settings')?.classList.remove('active');
+        document.getElementById('btn-settings-mobile')?.classList.remove('active');
     }
     document.querySelectorAll('.sp-tab').forEach(t => {
         t.classList.toggle('active', t.dataset.tab === tab);
@@ -1402,11 +1414,14 @@ function updateBookmarkRibbon() {
 function toggleSettingsPanel() {
     const panel = document.getElementById('settings-panel');
     const btn = document.getElementById('btn-settings');
+    const btnMobile = document.getElementById('btn-settings-mobile');
     // 사이드 패널이 열려있으면 먼저 닫기 (둘 다 동시에 안 띄우게)
     const sp = document.getElementById('side-panel');
     if (sp && sp.classList.contains('open')) closeSidePanel();
     panel.classList.toggle('open');
-    btn.classList.toggle('active', panel.classList.contains('open'));
+    const isOpen = panel.classList.contains('open');
+    btn?.classList.toggle('active', isOpen);
+    btnMobile?.classList.toggle('active', isOpen);
     updatePanelBackdrop();
 }
 
@@ -1458,6 +1473,10 @@ function bindReaderEvents() {
         openBookmarkModal();
     });
     document.getElementById('btn-settings').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSettingsPanel();
+    });
+    document.getElementById('btn-settings-mobile')?.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleSettingsPanel();
     });
@@ -1532,6 +1551,7 @@ function closeOverlaysIfOpen() {
     if (set && set.classList.contains('open')) {
         set.classList.remove('open');
         document.getElementById('btn-settings')?.classList.remove('active');
+        document.getElementById('btn-settings-mobile')?.classList.remove('active');
         closed = true;
     }
     if (closed) updatePanelBackdrop();
@@ -1619,6 +1639,7 @@ function readerKeyHandler(e) {
             closeSidePanel();
             document.getElementById('settings-panel')?.classList.remove('open');
             document.getElementById('btn-settings')?.classList.remove('active');
+        document.getElementById('btn-settings-mobile')?.classList.remove('active');
             break;
     }
 }
@@ -1745,26 +1766,17 @@ function setupHistoryNav() {
         history.replaceState({ view: 'library' }, '');
     }
     window.addEventListener('popstate', (e) => {
-        const target = e.state || { view: 'library' };
-
-        // 1순위: 모달 열려있으면 모달만 닫기
+        // 단순화: 뒤로가기 한 번 = 열린 overlay 정리 + 라이브러리로
+        // (이전엔 모달/패널 닫고 pushState로 reader 상태 다시 push해서 history 중복 → 뒤로가기 두 번 필요했음)
         const modal = document.getElementById('modal-backdrop');
-        if (modal && modal.classList.contains('show')) {
-            modal.classList.remove('show');
-            history.pushState({ view: 'reader' }, '');
-            return;
-        }
+        if (modal) modal.classList.remove('show');
+        closeOverlaysIfOpen();
 
-        // 2순위: 사이드/설정 패널 열려있으면 패널만 닫기
-        if (closeOverlaysIfOpen()) {
-            history.pushState({ view: 'reader' }, '');
-            return;
-        }
-
-        // 3순위: 리더 → 라이브러리
-        if (state.view === 'reader' && target.view !== 'reader') {
+        // 리더 → 라이브러리
+        if (state.view === 'reader') {
             state.view = 'library';
             state.currentBook = null;
+            destroyPageFlip();
             renderLibrary();
             return;
         }

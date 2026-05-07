@@ -1681,6 +1681,46 @@ body {
     .desktop-only { display: none; }
 }
 
+/* 모바일 설정 FAB (풀스크린 모드에서도 항상 보이는 우측 상단 설정 버튼) */
+.settings-fab {
+    position: fixed;
+    top: max(10px, env(safe-area-inset-top, 10px));
+    right: max(10px, env(safe-area-inset-right, 10px));
+    z-index: 40;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(20, 12, 6, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(212, 175, 95, 0.4);
+    color: var(--paper);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+    align-items: center;
+    justify-content: center;
+}
+@media (max-width: 900px) {
+    .settings-fab.mobile-only { display: flex; }
+}
+.settings-fab:hover {
+    background: rgba(176, 141, 58, 0.25);
+    border-color: var(--gold);
+}
+.settings-fab.active {
+    background: rgba(176, 141, 58, 0.3);
+    border-color: var(--gold);
+    color: var(--gold);
+}
+.settings-fab:active {
+    transform: scale(0.94);
+}
+
 /* 터치 영역 미리보기 */
 .touch-zones-preview {
     display: grid;
