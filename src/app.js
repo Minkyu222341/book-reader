@@ -1772,13 +1772,21 @@ function setupHistoryNav() {
         history.replaceState({ view: 'library' }, '');
     }
     window.addEventListener('popstate', (e) => {
-        // 단순화: 뒤로가기 한 번 = 열린 overlay 정리 + 라이브러리로
-        // (이전엔 모달/패널 닫고 pushState로 reader 상태 다시 push해서 history 중복 → 뒤로가기 두 번 필요했음)
+        // 1. 모달/패널이 열려있으면 그것만 닫고 reader 상태 복원
+        //    (pushState는 popstate 핸들러 안에서만 호출 → history 중복 없음)
         const modal = document.getElementById('modal-backdrop');
-        if (modal) modal.classList.remove('show');
-        closeOverlaysIfOpen();
+        const modalWasOpen = !!(modal && modal.classList.contains('show'));
+        if (modalWasOpen) modal.classList.remove('show');
+        const overlayClosed = closeOverlaysIfOpen();
 
-        // 리더 → 라이브러리
+        if (modalWasOpen || overlayClosed) {
+            if (state.view === 'reader' && state.currentBook) {
+                history.pushState({ view: 'reader', bookId: state.currentBook.id }, '');
+            }
+            return;
+        }
+
+        // 2. 리더 → 라이브러리
         if (state.view === 'reader') {
             state.view = 'library';
             state.currentBook = null;

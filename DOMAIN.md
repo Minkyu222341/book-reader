@@ -195,10 +195,15 @@ function pfSignature() {
 ## 10. 안드로이드 뒤로가기 (setupHistoryNav)
 
 `history.pushState({view:'reader'})`를 openBook 시 한 번 호출. popstate 이벤트에서:
-1. 모달/패널이 열려있으면 모두 닫음
-2. `state.view === 'reader'`면 라이브러리로
+1. **모달/패널이 열려있으면 그것만 닫고 reader 상태 복원** (라이브러리로 안 감)
+2. 그 외 `state.view === 'reader'`면 라이브러리로
 
-⚠️ **단순 정책 유지**. 예전엔 모달/패널 닫을 때마다 `pushState({view:'reader'})`로 reader 상태를 다시 push했는데, 그러면 history 스택에 reader가 중복돼서 뒤로가기를 여러 번 눌러야 라이브러리로 갔음. 지금은 한 번 = 라이브러리로 직행.
+### ⚠️ pushState 위치 규칙
+**reader 상태 복원용 `pushState`는 popstate 핸들러 안에서만** 호출. 패널을 열거나 닫을 때 pushState 호출 X.
+
+이유: 예전엔 패널 닫을 때마다 `pushState({view:'reader'})`해서 reader가 history에 중복 쌓이고 뒤로가기를 여러 번 눌러야 라이브러리로 갔음. 그 후 "한 번 = 라이브러리로 직행"으로 단순화했지만, 그러면 패널 열린 상태에서 뒤로가기 한 번에 패널 닫힘 + 라이브러리 이동이 동시에 일어남 (사용자 의도 X).
+
+현재 패턴: 패널 닫기는 popstate 안에서만 처리하고, 그 직후 같은 핸들러에서 `pushState`로 reader 상태를 한 번만 복원. 결과: history 스택은 `[library, reader]` 유지, 다음 뒤로가기는 정상적으로 라이브러리로 감.
 
 ## 11. 페이지 전환 옵션
 
@@ -269,7 +274,7 @@ with sync_playwright() as p:
 2. **CSS 미디어쿼리가 외부 정의보다 앞에 있으면 source order로 외부가 이김** → specificity 올리거나 순서 바꾸기
 3. **page-right 사이즈 측정은 visibility:hidden + display:'' 트릭** → display:none이면 측정 0
 4. **state.currentPagePair는 page index 단위 (양면이든 단면이든)** → spread index로 계산하지 말 것
-5. **history popstate에서 pushState 다시 호출하지 말 것** → 스택 중복으로 뒤로가기 여러 번 필요해짐
+5. **reader 상태 복원용 pushState는 popstate 핸들러 안에서만** → 패널 열기/닫기 시점에 pushState하면 스택 중복으로 뒤로가기 여러 번 필요. 패널 닫기는 popstate 처리 후 같은 핸들러에서 한 번만 pushState로 복원.
 6. **build.py 없음** → 직접 push가 배포. SW 캐시 버전은 수동
 7. **모바일은 단면 모드** → page.left는 display:none이지만 DOM에는 있음 (HTML 단순화 위해)
 8. **PageFlip 자체 마우스/터치 이벤트는 useMouseEvents:false로 끔** → 모든 입력은 우리 코드 → `_pf.flipPrev/Next`
