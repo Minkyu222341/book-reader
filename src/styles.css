@@ -1504,7 +1504,11 @@ body {
     .page.right { padding: 30px 24px; }
     #book::before { display: none; }
     #book-stage { padding: 16px 12px; }
-    #book { width: 100%; max-height: calc(100vh - 80px); max-height: calc(100dvh - 80px); }
+    #book {
+        width: 100%;
+        max-height: calc(100vh - 80px - env(safe-area-inset-bottom));
+        max-height: calc(100dvh - 80px - env(safe-area-inset-bottom));
+    }
     .nav-arrow { opacity: 0.3; font-size: 24px; }
 
     .cover-side { display: none; }
