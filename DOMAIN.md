@@ -90,7 +90,7 @@ Bookmark (북마크)
 
 ### 책 추가
 ```
-파일 input/드래그 → readFileAsText (UTF-8)
+파일 input/드래그 → readFileAsText (UTF-8 우선, 실패 시 EUC-KR 자동 재디코딩)
   → parseNovel(text, { fileName }) → { title, author, parts }
     └ parser.js: 챕터/부 패턴 정규식 매칭, fallback은 1권 통째로
   → saveBook(book) → IndexedDB
@@ -287,10 +287,11 @@ with sync_playwright() as p:
 3. **테마 (다크/세피아/라이트)**
 4. **챕터 예상 시간** ("약 8분")
 5. **JSON 백업/복원** — 라이브러리 다른 기기 이관
-6. **EUC-KR 인코딩 자동 감지** — 옛 텍본 호환
-7. **본문 검색** — 챕터 단위 텍스트 검색
-8. **하이라이트/형광펜**
-9. **TTS 음성 읽기**
+6. **본문 검색** — 챕터 단위 텍스트 검색
+7. **하이라이트/형광펜**
+8. **TTS 음성 읽기**
+
+> ~~EUC-KR 인코딩 자동 감지~~ — 완료 (readFileAsText가 UTF-8 실패 시 EUC-KR로 재디코딩)
 
 ---
 
