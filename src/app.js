@@ -495,14 +495,14 @@ async function processFiles(files) {
     renderLibrary();
 }
 
-function readFileAsText(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = () => reject(reader.error);
-        // UTF-8 가정 (대부분의 한국 텍본). EUC-KR 등은 우선 미지원 (필요시 인코딩 자동감지 추가)
-        reader.readAsText(file, 'UTF-8');
-    });
+async function readFileAsText(file) {
+    const buf = await file.arrayBuffer();
+    // UTF-8 우선 시도. fatal:true라 잘못된 바이트열이면 예외 → 옛 텍본용 EUC-KR(CP949)로 재시도.
+    try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+    } catch {
+        return new TextDecoder('euc-kr').decode(buf);
+    }
 }
 
 // =====================================================
